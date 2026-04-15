@@ -1,15 +1,19 @@
-from openpyxl import Workbook, load_workbook
+"""Excel 生成器模块，提供表头、内容和数据生成功能。"""
+
 from pathlib import Path
+
+from openpyxl import Workbook, load_workbook
+
 from .random_data import generate
 
 
 def create_workbook():
-    """创建新的工作簿"""
+    """创建新的工作簿。"""
     return Workbook()
 
 
 def add_headers(file_path: str, headers: list[str]):
-    """在文件第一行添加表头"""
+    """在文件第一行添加表头。"""
     path = Path(file_path)
 
     if path.exists():
@@ -62,7 +66,7 @@ def add_content(file_path: str, rows: int, schema: dict[str, str]):
 
 
 def generate_excel(file_path: str, count: int, headers: list[str], schema: dict[str, str]):
-    """生成完整的 Excel 文件"""
+    """生成完整的 Excel 文件。"""
     path = Path(file_path)
     wb = create_workbook()
     ws = wb.active

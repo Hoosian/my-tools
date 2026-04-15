@@ -1,5 +1,6 @@
+"""Excel 测试数据生成工具 CLI 入口。"""
+
 import argparse
-from pathlib import Path
 from .generator import add_headers, add_content, generate_excel
 
 
@@ -14,12 +15,14 @@ DEFAULT_SCHEMA = {
 
 
 def cmd_add_header(args):
+    """处理 add-header 命令。"""
     headers = [h.strip() for h in args.headers.split(',')]
     add_headers(args.file, headers)
     print(f'已添加表头到 {args.file}: {headers}')
 
 
 def cmd_add_content(args):
+    """处理 add-content 命令。"""
     schema = {}
     if args.template:
         for item in args.template.split(','):
@@ -38,6 +41,7 @@ def cmd_add_content(args):
 
 
 def cmd_generate(args):
+    """处理 generate 命令。"""
     headers = DEFAULT_HEADERS if not args.headers else [h.strip() for h in args.headers.split(',')]
     schema = DEFAULT_SCHEMA
 
@@ -46,6 +50,7 @@ def cmd_generate(args):
 
 
 def main():
+    """CLI 主入口。"""
     parser = argparse.ArgumentParser(description='Excel 测试数据生成工具')
     subparsers = parser.add_subparsers(dest='command', help='子命令')
 
