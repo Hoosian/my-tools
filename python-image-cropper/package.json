@@ -1,0 +1,21 @@
+{
+  "name": "imagetools",
+  "version": "1.0.0",
+  "description": "Image format conversion tool",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "imageTools": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "sharp": "^0.33.0",
+    "commander": "^12.0.0",
+    "inquirer": "^9.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

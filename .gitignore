@@ -1,0 +1,27 @@
+# ========== 通用 ==========
+.DS_Store
+*.log
+
+# ========== Python ==========
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ========== JavaScript / Node ==========
+node_modules/
+package-lock.json
+*.tsbuildinfo
+
+# ========== 测试生成的临时文件 ==========
+*.xlsx
+!src/**/*.xlsx
+
+# ========== IDE ==========
+.idea/
+.vscode/
+*.swp
+*.swo

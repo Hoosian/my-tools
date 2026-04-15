@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m src.main generate test.xlsx --count 5)",
+      "Bash(python -m src.main add-header test2.xlsx --headers \"姓名,邮箱\")"
+    ]
+  }
+}
