@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(python -m src.main generate test.xlsx --count 5)",
-      "Bash(python -m src.main add-header test2.xlsx --headers \"姓名,邮箱\")"
+      "Bash(python -m src.main add-header test2.xlsx --headers \"姓名,邮箱\")",
+      "Bash(rmdir python-image-cropper/temp-js)",
+      "Bash(rm -rf python-image-cropper/temp-js)"
     ]
   }
 }
