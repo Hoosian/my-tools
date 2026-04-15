@@ -11,8 +11,8 @@ Excel 测试数据生成工具（Python）
 
 ```bash
 cd js-excel-generator
-pip install -r requirements.txt
-python -m src.main generate test.xlsx --count 100
+uv sync
+uv run python -m src.main generate test.xlsx --count 100
 ```
 
 详细说明见 [js-excel-generator/README.md](js-excel-generator/README.md)

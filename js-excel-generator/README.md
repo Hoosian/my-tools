@@ -4,6 +4,14 @@
 
 ## 安装
 
+### 使用 uv（推荐）
+
+```bash
+uv sync
+```
+
+### 使用 pip
+
 ```bash
 pip install -r requirements.txt
 ```

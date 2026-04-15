@@ -1,0 +1,16 @@
+[project]
+name = "js-excel-generator"
+version = "0.1.0"
+description = "Excel test data generator"
+requires-python = ">=3.10"
+dependencies = [
+    "openpyxl>=3.0.0",
+    "Faker>=20.0.0",
+]
+
+[project.scripts]
+excel-gen = "src.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
