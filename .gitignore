@@ -19,6 +19,7 @@ package-lock.json
 # ========== 测试生成的临时文件 ==========
 *.xlsx
 !src/**/*.xlsx
+python-image-cropper/output/
 
 # ========== IDE ==========
 .idea/

@@ -15,11 +15,11 @@ uv sync
 uv run python -m src.main generate test.xlsx --count 100
 ```
 
-详细说明见 [js-excel-generator/README.md](js-excel-generator/README.md)
+详细说明见 [python-excel-generator/README.md](python-excel-generator/README.md)
 
 ---
 
-### 2. python-image-cropper
+### 2. js-image-cropper
 Node.js 图片格式转换工具
 
 支持多种图片格式的批量转换，质量可配置。
@@ -30,4 +30,4 @@ npm install
 npm start
 ```
 
-详细说明见 [python-image-cropper/README.md](python-image-cropper/README.md)
+详细说明见 [js-image-cropper/README.md](js-image-cropper/README.md)
