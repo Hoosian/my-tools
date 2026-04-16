@@ -58,6 +58,25 @@ function validateSize(sizeStr) {
   return { valid: true, size: result };
 }
 
+function parseAngle(angleStr) {
+  const angle = parseFloat(angleStr);
+  if (isNaN(angle) || angle < -360 || angle > 360) {
+    return null;
+  }
+  return angle;
+}
+
+function validateAngle(angleStr) {
+  const result = parseAngle(angleStr);
+  if (result === null) {
+    return {
+      valid: false,
+      error: 'Invalid angle. Please use a number between -360 and 360 (e.g., 90, -45, 180)'
+    };
+  }
+  return { valid: true, angle: result };
+}
+
 function calculateCropArea(width, height, targetRatio) {
   const currentRatio = width / height;
 
@@ -80,7 +99,7 @@ function calculateCropArea(width, height, targetRatio) {
 }
 
 function generateOutputFilename(inputPath, targetFormat, options = {}) {
-  const { ratio = null, size = null } = options;
+  const { ratio = null, size = null, flipH = false, flipV = false, angle = null } = options;
   const dir = path.dirname(inputPath);
   const ext = path.extname(inputPath);
   const basename = path.basename(inputPath, ext);
@@ -94,6 +113,12 @@ function generateOutputFilename(inputPath, targetFormat, options = {}) {
   if (size) {
     parts.push(`${size.width}x${size.height}`);
   }
+  if (flipH) parts.push('flipH');
+  if (flipV) parts.push('flipV');
+  if (angle !== null && angle !== 0) {
+    const sign = angle > 0 ? '' : 'n';
+    parts.push(`r${sign}${Math.abs(angle)}`);
+  }
 
   const suffix = parts.length > 0 ? `_${parts.join('_')}` : '';
   const newFilename = `${basename}_${inputFormat}${suffix}${newExt}`;
@@ -101,7 +126,7 @@ function generateOutputFilename(inputPath, targetFormat, options = {}) {
 }
 
 async function convertFile(inputPath, targetFormat, options = {}) {
-  const { quality = 85, skipExisting = true, ratio = null, size = null } = options;
+  const { quality = 85, skipExisting = true, ratio = null, size = null, flipH = false, flipV = false, angle = null } = options;
 
   if (!fs.existsSync(inputPath)) {
     return { success: false, error: 'File not found', path: inputPath };
@@ -130,7 +155,14 @@ async function convertFile(inputPath, targetFormat, options = {}) {
     }
   }
 
-  const outputPath = generateOutputFilename(inputPath, targetFormat, { ratio, size });
+  if (angle !== null) {
+    const validation = validateAngle(angle);
+    if (!validation.valid) {
+      return { success: false, error: validation.error, path: inputPath };
+    }
+  }
+
+  const outputPath = generateOutputFilename(inputPath, targetFormat, { ratio, size, flipH, flipV, angle });
 
   if (skipExisting && fs.existsSync(outputPath)) {
     return { success: false, error: 'Skipped (already exists)', path: inputPath, outputPath };
@@ -144,6 +176,10 @@ async function convertFile(inputPath, targetFormat, options = {}) {
       const crop = calculateCropArea(metadata.width, metadata.height, ratio.value);
       pipeline.extract(crop);
     }
+
+    if (flipH) pipeline.flop();
+    if (flipV) pipeline.flip();
+    if (angle !== null && angle !== 0) pipeline.rotate(angle);
 
     if (size) {
       pipeline.resize(size.width, size.height, { fit: 'inside' });
@@ -171,7 +207,7 @@ async function convertFile(inputPath, targetFormat, options = {}) {
 }
 
 async function convertDirectory(dirPath, targetFormat, options = {}) {
-  const { quality = 85, skipExisting = true, recursive = false, ratio = null, size = null } = options;
+  const { quality = 85, skipExisting = true, recursive = false, ratio = null, size = null, flipH = false, flipV = false, angle = null } = options;
 
   if (!fs.existsSync(dirPath)) {
     return { success: false, error: 'Directory not found', results: [] };
@@ -197,7 +233,7 @@ async function convertDirectory(dirPath, targetFormat, options = {}) {
       const subResults = await convertDirectory(inputPath, targetFormat, options);
       results.push(...subResults.results);
     } else if (!stat.isDirectory()) {
-      const result = await convertFile(inputPath, targetFormat, { quality, skipExisting, ratio, size });
+      const result = await convertFile(inputPath, targetFormat, { quality, skipExisting, ratio, size, flipH, flipV, angle });
       results.push(result);
     }
   }
@@ -220,5 +256,7 @@ export {
   parseRatio,
   validateRatio,
   parseSize,
-  validateSize
+  validateSize,
+  parseAngle,
+  validateAngle
 };

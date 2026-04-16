@@ -10,6 +10,7 @@ Node.js 图片批量格式转换工具，支持多种格式，质量可配置。
 - 质量参数可配置
 - 交互式菜单
 - 冲突文件自动跳过
+- **图片变换**：支持水平翻转、垂直翻转、旋转
 
 ## 支持格式
 
@@ -64,6 +65,28 @@ npm start -- convert ./images -f webp -q 80
 npm start -- convert ./photos -f png -r
 ```
 
+#### 图片变换
+
+```bash
+# 水平翻转（左右镜像）
+npm start -- convert photo.png -f png --flip-h
+
+# 垂直翻转（上下镜像）
+npm start -- convert photo.png -f png --flip-v
+
+# 旋转 90 度（顺时针）
+npm start -- convert photo.png -f png --rotate 90
+
+# 旋转 -45 度（逆时针）
+npm start -- convert photo.png -f png --rotate -45
+
+# 旋转 180 度
+npm start -- convert photo.png -f png --rotate 180
+
+# 组合使用：翻转 + 旋转 + 缩放
+npm start -- convert photo.png -f webp --flip-h --rotate 90 --size 800x600
+```
+
 #### 查看支持格式
 
 ```bash
@@ -89,12 +112,19 @@ npm start -- preview photo.png jpg
 | `-f, --format` | 目标格式 | 必需 |
 | `-q, --quality` | 图片质量 (1-100) | 85 |
 | `-r, --recursive` | 递归处理子目录 | false |
+| `--ratio` | 裁剪比例 (如 3:4, 16:9, 1:1) | - |
+| `--size` | 缩放尺寸 (如 800x600) | - |
+| `--flip-h` | 水平翻转（左右镜像） | false |
+| `--flip-v` | 垂直翻转（上下镜像） | false |
+| `--rotate` | 旋转角度 (-360 ~ 360) | - |
 
 ## 输出规则
 
 - 输出文件与原文件在同一目录
-- 文件命名格式：`原文件名_<目标格式>.<原扩展名>`
+- 文件命名格式：`原文件名_<目标格式>[_变换参数].<扩展名>`
 - 例如：`photo.png` → `photo_jpg.png`
+- 例如：`photo.png` → `photo_jpg_flipH_r90.png`（水平翻转 + 旋转90度）
+- 变换参数说明：`flipH`=水平翻转、`flipV`=垂直翻转、`r`/`rn`=旋转（n为负数）
 - 若目标文件已存在，自动跳过
 
 ## 全局安装（可选）
