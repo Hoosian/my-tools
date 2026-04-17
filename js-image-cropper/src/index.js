@@ -25,8 +25,14 @@ program
   .option('--flip-h', 'Flip image horizontally (left-right mirror)', false)
   .option('--flip-v', 'Flip image vertically (top-bottom mirror)', false)
   .option('--rotate <angle>', 'Rotate image by angle in degrees (e.g., 90, -45, 180)', parseFloat)
+  .option('--watermark-text <text>', 'Add text watermark')
+  .option('--watermark-image <path>', 'Add image watermark (PNG with transparency)')
+  .option('--watermark-position <position>', 'Watermark position (top-left, top, top-right, left, center, right, bottom-left, bottom, bottom-right)', 'bottom-right')
+  .option('--watermark-scale <scale>', 'Watermark scale relative to image (0.0-1.0)', '0.2')
+  .option('--watermark-opacity <opacity>', 'Watermark opacity (0.0-1.0)', '0.5')
+  .option('--watermark-color <color>', 'Text watermark color (rgba, hex)', 'rgba(255,255,255,0.5)')
   .action(async (inputPath, options) => {
-    const { format, quality, recursive, ratio, size, flipH, flipV, rotate } = options;
+    const { format, quality, recursive, ratio, size, flipH, flipV, rotate, watermarkText, watermarkImage, watermarkPosition, watermarkScale, watermarkOpacity, watermarkColor } = options;
 
     if (!format) {
       console.error('Error: --format is required');
@@ -62,6 +68,19 @@ program
 
     const opts = { quality: qualityNum, skipExisting: true, recursive, ratio: ratioObj, size: sizeObj, flipH, flipV, angle };
 
+    if (watermarkText || watermarkImage) {
+      opts.watermark = {};
+      if (watermarkText) {
+        opts.watermark.text = watermarkText;
+        opts.watermark.color = watermarkColor;
+      } else if (watermarkImage) {
+        opts.watermark.image = watermarkImage;
+        opts.watermark.position = watermarkPosition;
+        opts.watermark.scale = parseFloat(watermarkScale);
+        opts.watermark.opacity = parseFloat(watermarkOpacity);
+      }
+    }
+
     if (!fs.existsSync(inputPath)) {
       console.error(`Error: Path not found: ${inputPath}`);
       process.exit(1);
@@ -77,6 +96,8 @@ program
       if (flipH) msg += ', Flip Horizontal';
       if (flipV) msg += ', Flip Vertical';
       if (angle !== null) msg += `, Rotate: ${angle}`;
+      if (watermarkText) msg += `, Watermark: "${watermarkText}"`;
+      if (watermarkImage) msg += `, Watermark Image: ${watermarkImage}`;
       console.log(msg + '\n');
 
       const { results } = await convertDirectory(inputPath, format, opts);
@@ -100,6 +121,8 @@ program
       if (flipH) msg += ', Flip Horizontal';
       if (flipV) msg += ', Flip Vertical';
       if (angle !== null) msg += `, Rotate: ${angle}`;
+      if (watermarkText) msg += `, Watermark: "${watermarkText}"`;
+      if (watermarkImage) msg += `, Watermark Image: ${watermarkImage}`;
       console.log(msg + '\n');
 
       const result = await convertFile(inputPath, format, opts);
@@ -187,7 +210,7 @@ async function interactiveMenu() {
   }
 
   if (action === 'single') {
-    const { inputFile, format, quality, ratio, size, flipH, flipV, rotate } = await inquirer.prompt([
+    const { inputFile, format, quality, ratio, size, flipH, flipV, rotate, watermarkType, watermarkText, watermarkImage, watermarkPosition, watermarkScale, watermarkOpacity, watermarkColor } = await inquirer.prompt([
       { type: 'input', name: 'inputFile', message: 'Input file path:' },
       { type: 'input', name: 'format', message: 'Target format (e.g., jpg, png, webp):' },
       { type: 'input', name: 'quality', message: 'Quality (1-100):', default: '85' },
@@ -195,7 +218,14 @@ async function interactiveMenu() {
       { type: 'input', name: 'size', message: 'Max size WxH (e.g., 800x600, leave blank to skip):', default: '' },
       { type: 'confirm', name: 'flipH', message: 'Flip horizontally (left-right mirror)?', default: false },
       { type: 'confirm', name: 'flipV', message: 'Flip vertically (top-bottom mirror)?', default: false },
-      { type: 'input', name: 'rotate', message: 'Rotate angle in degrees (e.g., 90, -45, leave blank for no rotation):', default: '' }
+      { type: 'input', name: 'rotate', message: 'Rotate angle in degrees (e.g., 90, -45, leave blank for no rotation):', default: '' },
+      { type: 'list', name: 'watermarkType', message: 'Add watermark?', choices: ['None', 'Text', 'Image'], default: 'None' },
+      { type: 'input', name: 'watermarkText', message: 'Watermark text (leave blank for none):', default: '', when: (answers) => answers.watermarkType === 'Text' },
+      { type: 'input', name: 'watermarkImage', message: 'Watermark image path:', default: '', when: (answers) => answers.watermarkType === 'Image' },
+      { type: 'input', name: 'watermarkPosition', message: 'Watermark position (e.g., bottom-right):', default: 'bottom-right', when: (answers) => answers.watermarkType !== 'None' },
+      { type: 'input', name: 'watermarkScale', message: 'Watermark scale (0.0-1.0):', default: '0.2', when: (answers) => answers.watermarkType !== 'None' },
+      { type: 'input', name: 'watermarkOpacity', message: 'Watermark opacity (0.0-1.0):', default: '0.5', when: (answers) => answers.watermarkType !== 'None' },
+      { type: 'input', name: 'watermarkColor', message: 'Text watermark color (rgba, hex):', default: 'rgba(255,255,255,0.5)', when: (answers) => answers.watermarkType === 'Text' }
     ]);
 
     const qualityNum = parseInt(quality) || 85;
@@ -203,7 +233,14 @@ async function interactiveMenu() {
     const sizeObj = size ? parseSize(size) : null;
     const angle = rotate ? parseFloat(rotate) : null;
 
-    const result = await convertFile(inputFile, format, { quality: qualityNum, skipExisting: true, ratio: ratioObj, size: sizeObj, flipH, flipV, angle });
+    let opts = { quality: qualityNum, skipExisting: true, ratio: ratioObj, size: sizeObj, flipH, flipV, angle };
+    if (watermarkType === 'Text' && watermarkText) {
+      opts.watermark = { text: watermarkText, color: watermarkColor };
+    } else if (watermarkType === 'Image' && watermarkImage) {
+      opts.watermark = { image: watermarkImage, position: watermarkPosition, scale: parseFloat(watermarkScale), opacity: parseFloat(watermarkOpacity) };
+    }
+
+    const result = await convertFile(inputFile, format, opts);
 
     if (result.success) {
       console.log(`\nSuccess!`);
@@ -217,7 +254,7 @@ async function interactiveMenu() {
   }
 
   if (action === 'dir') {
-    const { dirPath, format, quality, recursive, ratio, size, flipH, flipV, rotate } = await inquirer.prompt([
+    const { dirPath, format, quality, recursive, ratio, size, flipH, flipV, rotate, watermarkType, watermarkText, watermarkImage, watermarkPosition, watermarkScale, watermarkOpacity, watermarkColor } = await inquirer.prompt([
       { type: 'input', name: 'dirPath', message: 'Directory path:' },
       { type: 'input', name: 'format', message: 'Target format (e.g., jpg, png, webp):' },
       { type: 'input', name: 'quality', message: 'Quality (1-100):', default: '85' },
@@ -226,13 +263,27 @@ async function interactiveMenu() {
       { type: 'input', name: 'size', message: 'Max size WxH (e.g., 800x600, leave blank to skip):', default: '' },
       { type: 'confirm', name: 'flipH', message: 'Flip horizontally (left-right mirror)?', default: false },
       { type: 'confirm', name: 'flipV', message: 'Flip vertically (top-bottom mirror)?', default: false },
-      { type: 'input', name: 'rotate', message: 'Rotate angle in degrees (e.g., 90, -45, leave blank for no rotation):', default: '' }
+      { type: 'input', name: 'rotate', message: 'Rotate angle in degrees (e.g., 90, -45, leave blank for no rotation):', default: '' },
+      { type: 'list', name: 'watermarkType', message: 'Add watermark?', choices: ['None', 'Text', 'Image'], default: 'None' },
+      { type: 'input', name: 'watermarkText', message: 'Watermark text:', default: '', when: (answers) => answers.watermarkType === 'Text' },
+      { type: 'input', name: 'watermarkImage', message: 'Watermark image path:', default: '', when: (answers) => answers.watermarkType === 'Image' },
+      { type: 'input', name: 'watermarkPosition', message: 'Watermark position:', default: 'bottom-right', when: (answers) => answers.watermarkType !== 'None' },
+      { type: 'input', name: 'watermarkScale', message: 'Watermark scale (0.0-1.0):', default: '0.2', when: (answers) => answers.watermarkType !== 'None' },
+      { type: 'input', name: 'watermarkOpacity', message: 'Watermark opacity (0.0-1.0):', default: '0.5', when: (answers) => answers.watermarkType !== 'None' },
+      { type: 'input', name: 'watermarkColor', message: 'Text watermark color:', default: 'rgba(255,255,255,0.5)', when: (answers) => answers.watermarkType === 'Text' }
     ]);
 
     const qualityNum = parseInt(quality) || 85;
     const ratioObj = ratio ? parseRatio(ratio) : null;
     const sizeObj = size ? parseSize(size) : null;
     const angle = rotate ? parseFloat(rotate) : null;
+
+    let opts = { quality: qualityNum, skipExisting: true, recursive, ratio: ratioObj, size: sizeObj, flipH, flipV, angle };
+    if (watermarkType === 'Text' && watermarkText) {
+      opts.watermark = { text: watermarkText, color: watermarkColor };
+    } else if (watermarkType === 'Image' && watermarkImage) {
+      opts.watermark = { image: watermarkImage, position: watermarkPosition, scale: parseFloat(watermarkScale), opacity: parseFloat(watermarkOpacity) };
+    }
 
     let msg = `\nConverting all images in: ${dirPath}`;
     msg += `\nTarget format: ${format}, Quality: ${qualityNum}`;
@@ -241,18 +292,11 @@ async function interactiveMenu() {
     if (flipH) msg += ', Flip Horizontal';
     if (flipV) msg += ', Flip Vertical';
     if (angle !== null) msg += `, Rotate: ${angle}`;
+    if (watermarkType === 'Text' && watermarkText) msg += `, Watermark: "${watermarkText}"`;
+    if (watermarkType === 'Image' && watermarkImage) msg += `, Watermark Image: ${watermarkImage}`;
     console.log(msg + '\n');
 
-    const { results } = await convertDirectory(dirPath, format, {
-      quality: qualityNum,
-      skipExisting: true,
-      recursive,
-      ratio: ratioObj,
-      size: sizeObj,
-      flipH,
-      flipV,
-      angle
-    });
+    const { results } = await convertDirectory(dirPath, format, opts);
 
     const succeeded = results.filter(r => r.success).length;
     const skipped = results.filter(r => r.error === 'Skipped (already exists)').length;

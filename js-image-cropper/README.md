@@ -11,6 +11,7 @@ Node.js 图片批量格式转换工具，支持多种格式，质量可配置。
 - 交互式菜单
 - 冲突文件自动跳过
 - **图片变换**：支持水平翻转、垂直翻转、旋转
+- **水印功能**：支持文字水印和图片水印
 
 ## 支持格式
 
@@ -87,6 +88,28 @@ npm start -- convert photo.png -f png --rotate 180
 npm start -- convert photo.png -f webp --flip-h --rotate 90 --size 800x600
 ```
 
+#### 添加水印
+
+```bash
+# 添加文字水印（默认白色，位于图片右下角）
+npm start -- convert photo.png -f png --watermark-text "Hello World"
+
+# 添加文字水印（自定义颜色）
+npm start -- convert photo.png -f png --watermark-text "Copyright" --watermark-color "rgba(0,0,0,0.8)"
+
+# 添加文字水印（自定义颜色和位置）
+npm start -- convert photo.png -f png --watermark-text "Copyright" --watermark-color "rgba(0,0,0,0.3)" --watermark-position bottom-right
+
+# 添加图片水印
+npm start -- convert photo.png -f png --watermark-image ./logo.png
+
+# 添加图片水印（自定义缩放和位置）
+npm start -- convert photo.png -f png --watermark-image ./logo.png --watermark-scale 0.15 --watermark-position top-left
+
+# 组合使用：水印 + 格式转换 + 质量调整
+npm start -- convert photo.png -f webp -q 90 --watermark-text "My Site" --watermark-position bottom-right
+```
+
 #### 查看支持格式
 
 ```bash
@@ -117,6 +140,15 @@ npm start -- preview photo.png jpg
 | `--flip-h` | 水平翻转（左右镜像） | false |
 | `--flip-v` | 垂直翻转（上下镜像） | false |
 | `--rotate` | 旋转角度 (-360 ~ 360) | - |
+| `--watermark-text` | 文字水印内容 | - |
+| `--watermark-image` | 图片水印路径 (PNG) | - |
+| `--watermark-position` | 水印位置 | bottom-right |
+| `--watermark-scale` | 图片水印相对尺寸 (0.0-1.0) | 0.2 |
+| `--watermark-opacity` | 水印透明度 (0.0-1.0) | 0.5 |
+| `--watermark-color` | 文字水印颜色 (rgba 或 hex) | rgba(255,255,255,0.7) |
+| `--watermark-color` | 文字水印颜色 | rgba(255,255,255,0.5) |
+
+**水印位置可选值**: `top-left`, `top`, `top-right`, `left`, `center`, `right`, `bottom-left`, `bottom`, `bottom-right`
 
 ## 输出规则
 

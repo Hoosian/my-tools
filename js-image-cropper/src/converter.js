@@ -99,7 +99,7 @@ function calculateCropArea(width, height, targetRatio) {
 }
 
 function generateOutputFilename(inputPath, targetFormat, options = {}) {
-  const { ratio = null, size = null, flipH = false, flipV = false, angle = null } = options;
+  const { ratio = null, size = null, flipH = false, flipV = false, angle = null, watermark = null } = options;
   const dir = path.dirname(inputPath);
   const ext = path.extname(inputPath);
   const basename = path.basename(inputPath, ext);
@@ -119,6 +119,13 @@ function generateOutputFilename(inputPath, targetFormat, options = {}) {
     const sign = angle > 0 ? '' : 'n';
     parts.push(`r${sign}${Math.abs(angle)}`);
   }
+  if (watermark) {
+    if (watermark.text) {
+      parts.push(`wm_${watermark.text.substring(0, 10)}`);
+    } else if (watermark.image) {
+      parts.push('wm_img');
+    }
+  }
 
   const suffix = parts.length > 0 ? `_${parts.join('_')}` : '';
   const newFilename = `${basename}_${inputFormat}${suffix}${newExt}`;
@@ -126,7 +133,7 @@ function generateOutputFilename(inputPath, targetFormat, options = {}) {
 }
 
 async function convertFile(inputPath, targetFormat, options = {}) {
-  const { quality = 85, skipExisting = true, ratio = null, size = null, flipH = false, flipV = false, angle = null } = options;
+  const { quality = 85, skipExisting = true, ratio = null, size = null, flipH = false, flipV = false, angle = null, watermark = null } = options;
 
   if (!fs.existsSync(inputPath)) {
     return { success: false, error: 'File not found', path: inputPath };
@@ -162,7 +169,7 @@ async function convertFile(inputPath, targetFormat, options = {}) {
     }
   }
 
-  const outputPath = generateOutputFilename(inputPath, targetFormat, { ratio, size, flipH, flipV, angle });
+  const outputPath = generateOutputFilename(inputPath, targetFormat, { ratio, size, flipH, flipV, angle, watermark });
 
   if (skipExisting && fs.existsSync(outputPath)) {
     return { success: false, error: 'Skipped (already exists)', path: inputPath, outputPath };
@@ -170,10 +177,12 @@ async function convertFile(inputPath, targetFormat, options = {}) {
 
   try {
     const pipeline = sharp(inputPath);
+    const metadata = await pipeline.metadata();
+    const originalWidth = metadata.width;
+    const originalHeight = metadata.height;
 
     if (ratio) {
-      const metadata = await pipeline.metadata();
-      const crop = calculateCropArea(metadata.width, metadata.height, ratio.value);
+      const crop = calculateCropArea(originalWidth, originalHeight, ratio.value);
       pipeline.extract(crop);
     }
 
@@ -183,6 +192,52 @@ async function convertFile(inputPath, targetFormat, options = {}) {
 
     if (size) {
       pipeline.resize(size.width, size.height, { fit: 'inside' });
+    }
+
+    if (watermark) {
+      const imgWidth = originalWidth;
+      const imgHeight = originalHeight;
+
+      if (watermark.text) {
+        const fontSize = Math.round(Math.min(imgWidth, imgHeight) * 0.04);
+        const textLength = Math.round(watermark.text.length * fontSize * 0.6);
+        const padding = Math.round(fontSize * 0.5);
+        const wmWidth = Math.round(textLength + padding * 2);
+        const wmHeight = Math.round(fontSize * 1.5);
+        const wmLeft = Math.round(imgWidth - wmWidth - padding);
+        const wmTop = Math.round(imgHeight - wmHeight - padding);
+
+        const textSvg = `
+          <svg width="${wmWidth}" height="${wmHeight}">
+            <style>
+              .watermark {
+                fill: ${watermark.color || 'rgba(255,255,255,0.7)'};
+                font-size: ${fontSize}px;
+                font-family: Arial, sans-serif;
+                font-weight: bold;
+              }
+            </style>
+            <text x="${padding}" y="${wmHeight / 2}" dy=".35em" class="watermark">${escapeXml(watermark.text)}</text>
+          </svg>
+        `;
+        const wmBuffer = Buffer.from(textSvg);
+        pipeline.composite([{ input: wmBuffer, left: wmLeft, top: wmTop }]);
+      } else if (watermark.image) {
+        const wmImage = sharp(watermark.image);
+        const wmMeta = await wmImage.metadata();
+        const wmScale = watermark.scale || 0.2;
+        const wmWidth = Math.round(imgWidth * wmScale);
+        const wmHeight = Math.round(wmMeta.height * (wmWidth / wmMeta.width));
+
+        const position = watermark.position || 'bottom-right';
+        const gravity = getGravity(position);
+
+        pipeline.composite([{
+          input: await wmImage.resize(wmWidth, wmHeight).toBuffer(),
+          gravity: gravity,
+          blend: 'overlay'
+        }]);
+      }
     }
 
     const sharpOptions = { quality };
@@ -207,7 +262,7 @@ async function convertFile(inputPath, targetFormat, options = {}) {
 }
 
 async function convertDirectory(dirPath, targetFormat, options = {}) {
-  const { quality = 85, skipExisting = true, recursive = false, ratio = null, size = null, flipH = false, flipV = false, angle = null } = options;
+  const { quality = 85, skipExisting = true, recursive = false, ratio = null, size = null, flipH = false, flipV = false, angle = null, watermark = null } = options;
 
   if (!fs.existsSync(dirPath)) {
     return { success: false, error: 'Directory not found', results: [] };
@@ -233,7 +288,7 @@ async function convertDirectory(dirPath, targetFormat, options = {}) {
       const subResults = await convertDirectory(inputPath, targetFormat, options);
       results.push(...subResults.results);
     } else if (!stat.isDirectory()) {
-      const result = await convertFile(inputPath, targetFormat, { quality, skipExisting, ratio, size, flipH, flipV, angle });
+      const result = await convertFile(inputPath, targetFormat, { quality, skipExisting, ratio, size, flipH, flipV, angle, watermark });
       results.push(result);
     }
   }
@@ -246,6 +301,30 @@ function getSupportedFormats() {
     input: [...SUPPORTED_INPUT_FORMATS],
     output: [...SUPPORTED_OUTPUT_FORMATS]
   };
+}
+
+function escapeXml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function getGravity(position) {
+  const map = {
+    'top-left': 'northwest',
+    'top': 'north',
+    'top-right': 'northeast',
+    'left': 'west',
+    'center': 'centre',
+    'right': 'east',
+    'bottom-left': 'southwest',
+    'bottom': 'south',
+    'bottom-right': 'southeast'
+  };
+  return map[position] || 'southeast';
 }
 
 export {
