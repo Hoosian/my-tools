@@ -149,23 +149,44 @@ async function convertFile(inputPath, targetFormat, options = {}) {
   }
 
   if (ratio) {
-    const validation = validateRatio(ratio);
-    if (!validation.valid) {
-      return { success: false, error: validation.error, path: inputPath };
+    if (typeof ratio === 'string') {
+      const validation = validateRatio(ratio);
+      if (!validation.valid) {
+        return { success: false, error: validation.error, path: inputPath };
+      }
+    } else if (typeof ratio === 'object' && ratio.value) {
+      // ratio 已经是解析后的对象
+    } else {
+      return { success: false, error: 'Invalid ratio format', path: inputPath };
     }
   }
 
   if (size) {
-    const validation = validateSize(size);
-    if (!validation.valid) {
-      return { success: false, error: validation.error, path: inputPath };
+    if (typeof size === 'string') {
+      const validation = validateSize(size);
+      if (!validation.valid) {
+        return { success: false, error: validation.error, path: inputPath };
+      }
+    } else if (typeof size === 'object' && size.width && size.height) {
+      // size 已经是解析后的对象
+    } else {
+      return { success: false, error: 'Invalid size format', path: inputPath };
     }
   }
 
   if (angle !== null) {
-    const validation = validateAngle(angle);
-    if (!validation.valid) {
-      return { success: false, error: validation.error, path: inputPath };
+    if (typeof angle === 'string') {
+      const validation = validateAngle(angle);
+      if (!validation.valid) {
+        return { success: false, error: validation.error, path: inputPath };
+      }
+    } else if (typeof angle === 'number') {
+      // angle 已经是数字
+      if (angle < -360 || angle > 360) {
+        return { success: false, error: 'Invalid angle. Please use a number between -360 and 360', path: inputPath };
+      }
+    } else {
+      return { success: false, error: 'Invalid angle format', path: inputPath };
     }
   }
 
