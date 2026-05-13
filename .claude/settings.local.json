@@ -21,7 +21,8 @@
       "Bash(/d/newComputerFile/dev/code/my-tools/python-excel-generator/.venv/Scripts/python.exe *)",
       "mcp__Chrome_DevTools_MCP__upload_file",
       "mcp__Chrome_DevTools_MCP__navigate_page",
-      "mcp__Chrome_DevTools_MCP__fill"
+      "mcp__Chrome_DevTools_MCP__fill",
+      "Bash(python *)"
     ]
   }
 }

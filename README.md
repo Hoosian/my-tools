@@ -2,7 +2,44 @@
 
 Personal collection of handy tools.
 
-## Tools
+## Quick Start (Web UI)
+
+Unified web interface for all tools — no command line required.
+
+### Prerequisites
+
+- Python 3.10+ with `uv`
+- Node.js 18+
+
+### Install dependencies
+
+```bash
+cd python-excel-generator
+uv pip install fastapi uvicorn python-multipart
+
+cd ../js-image-cropper
+npm install
+```
+
+### Start the server
+
+**Windows:** Double-click `run.bat` or run in terminal:
+
+```bash
+run.bat
+```
+
+**Manual start (cross-platform):**
+
+```bash
+PYTHONPATH="$(pwd)" python-excel-generator/.venv/Scripts/python -m uvicorn web_ui.main:app --host 0.0.0.0 --port 8000
+```
+
+Then open `http://localhost:8000` in your browser.
+
+---
+
+## Tools (CLI)
 
 ### 1. python-excel-generator
 Excel Test Data Generator (Python)
