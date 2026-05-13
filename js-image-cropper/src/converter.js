@@ -224,12 +224,48 @@ async function convertFile(inputPath, targetFormat, options = {}) {
 
       if (watermark.text) {
         const fontSize = Math.round(Math.min(imgWidth, imgHeight) * 0.04);
-        const textLength = Math.round(watermark.text.length * fontSize * 0.6);
         const padding = Math.round(fontSize * 0.5);
-        const wmWidth = Math.round(textLength + padding * 2);
-        const wmHeight = Math.round(fontSize * 1.5);
-        const wmLeft = Math.round(imgWidth - wmWidth - padding);
-        const wmTop = Math.round(imgHeight - wmHeight - padding);
+        const maxWidth = Math.round(imgWidth * 0.8);
+        const charWidth = fontSize * 0.6;
+        const maxCharsPerLine = Math.max(1, Math.floor((maxWidth - padding * 2) / charWidth));
+        const maxLines = 3;
+        const lineHeight = Math.round(fontSize * 1.3);
+
+        let lines = [];
+        let rawText = watermark.text;
+
+        if (watermark.fit === 'truncate') {
+          // 单行截断模式
+          if (rawText.length > maxCharsPerLine) {
+            rawText = rawText.substring(0, Math.max(1, maxCharsPerLine - 2)) + '...';
+          }
+          lines = [rawText];
+        } else {
+          // 自动换行模式（默认）
+          for (let i = 0; i < rawText.length; i += maxCharsPerLine) {
+            lines.push(rawText.substring(i, i + maxCharsPerLine));
+          }
+          if (lines.length > maxLines) {
+            lines = lines.slice(0, maxLines - 1);
+            let lastLine = lines[lines.length - 1];
+            if (lastLine.length > maxCharsPerLine - 2) {
+              lastLine = lastLine.substring(0, maxCharsPerLine - 2);
+            }
+            lines[lines.length - 1] = lastLine + '...';
+          }
+        }
+
+        const wmWidth = maxWidth;
+        const wmHeight = Math.round(lineHeight * lines.length + padding);
+        const position = watermark.position || 'bottom-right';
+        const { left: wmLeft, top: wmTop } = calculateTextPosition(
+          imgWidth, imgHeight, wmWidth, wmHeight, padding, position
+        );
+
+        const tspanElements = lines.map((line, idx) => {
+          const dy = idx === 0 ? lineHeight : lineHeight;
+          return `            <tspan x="${padding}" dy="${dy}">${escapeXml(line)}</tspan>`;
+        }).join('\n');
 
         const textSvg = `
           <svg width="${wmWidth}" height="${wmHeight}">
@@ -241,7 +277,9 @@ async function convertFile(inputPath, targetFormat, options = {}) {
                 font-weight: bold;
               }
             </style>
-            <text x="${padding}" y="${wmHeight / 2}" dy=".35em" class="watermark">${escapeXml(watermark.text)}</text>
+            <text x="${padding}" y="0">
+${tspanElements}
+            </text>
           </svg>
         `;
         const wmBuffer = Buffer.from(textSvg);
@@ -334,6 +372,21 @@ function escapeXml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+function calculateTextPosition(imgWidth, imgHeight, wmWidth, wmHeight, padding, position) {
+  const map = {
+    'top-left':     { left: padding, top: padding },
+    'top':          { left: Math.round((imgWidth - wmWidth) / 2), top: padding },
+    'top-right':    { left: Math.round(imgWidth - wmWidth - padding), top: padding },
+    'left':         { left: padding, top: Math.round((imgHeight - wmHeight) / 2) },
+    'center':       { left: Math.round((imgWidth - wmWidth) / 2), top: Math.round((imgHeight - wmHeight) / 2) },
+    'right':        { left: Math.round(imgWidth - wmWidth - padding), top: Math.round((imgHeight - wmHeight) / 2) },
+    'bottom-left':  { left: padding, top: Math.round(imgHeight - wmHeight - padding) },
+    'bottom':       { left: Math.round((imgWidth - wmWidth) / 2), top: Math.round(imgHeight - wmHeight - padding) },
+    'bottom-right': { left: Math.round(imgWidth - wmWidth - padding), top: Math.round(imgHeight - wmHeight - padding) },
+  };
+  return map[position] || map['bottom-right'];
 }
 
 function getGravity(position) {

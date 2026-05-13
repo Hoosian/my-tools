@@ -266,6 +266,79 @@
             </div>
           </div>
         </div>
+        <div class="form-group">
+          <label>水印</label>
+          <select id="watermarkType" onchange="toggleWatermarkFields()">
+            <option value="none">无</option>
+            <option value="text">文字水印</option>
+            <option value="image">图片水印</option>
+          </select>
+        </div>
+        <div id="wmTextSection" class="watermark-section" style="display:none">
+          <div class="row">
+            <div class="form-group">
+              <label>水印文字</label>
+              <input type="text" id="watermarkText" placeholder="输入水印文字">
+            </div>
+            <div class="form-group">
+              <label>颜色 <span class="hint">如 rgba(255,255,255,0.5)</span></label>
+              <input type="text" id="watermarkColor" value="rgba(255,255,255,0.5)">
+            </div>
+          </div>
+          <div class="row">
+            <div class="form-group">
+              <label>位置</label>
+              <select id="watermarkTextPosition">
+                <option value="top-left">左上</option>
+                <option value="top">上中</option>
+                <option value="top-right">右上</option>
+                <option value="left">左中</option>
+                <option value="center">居中</option>
+                <option value="right">右中</option>
+                <option value="bottom-left">左下</option>
+                <option value="bottom">下中</option>
+                <option value="bottom-right" selected>右下</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>处理方式 <span class="hint">文字太长时</span></label>
+              <select id="watermarkFit">
+                <option value="shrink" selected>自动换行（多行显示）</option>
+                <option value="truncate">截断显示（加省略号）</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="wmImageSection" class="watermark-section" style="display:none">
+          <div class="form-group">
+            <label>水印图片</label>
+            <input type="file" id="watermarkImage" accept="image/*">
+          </div>
+          <div class="row">
+            <div class="form-group">
+              <label>位置</label>
+              <select id="watermarkPosition">
+                <option value="top-left">左上</option>
+                <option value="top">上中</option>
+                <option value="top-right">右上</option>
+                <option value="left">左中</option>
+                <option value="center">居中</option>
+                <option value="right">右中</option>
+                <option value="bottom-left">左下</option>
+                <option value="bottom">下中</option>
+                <option value="bottom-right" selected>右下</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>缩放比例 <span class="hint">0.0 - 1.0</span></label>
+              <input type="number" id="watermarkScale" value="0.2" min="0" max="1" step="0.05">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>透明度 <span class="hint">0.0 - 1.0</span></label>
+            <input type="number" id="watermarkOpacity" value="0.5" min="0" max="1" step="0.05">
+          </div>
+        </div>
         <button type="submit" class="btn btn-primary" id="imgBtn">开始转换</button>
       </form>
       <div id="imgResult" class="result"></div>
@@ -368,6 +441,12 @@
       }
     });
 
+    function toggleWatermarkFields() {
+      const type = document.getElementById('watermarkType').value;
+      document.getElementById('wmTextSection').style.display = type === 'text' ? 'block' : 'none';
+      document.getElementById('wmImageSection').style.display = type === 'image' ? 'block' : 'none';
+    }
+
     async function handleImageConvert(e) {
       e.preventDefault();
       hideResult('imgResult');
@@ -384,6 +463,21 @@
       form.append('flipH', document.getElementById('imgFlipH').checked);
       form.append('flipV', document.getElementById('imgFlipV').checked);
       form.append('rotate', document.getElementById('imgRotate').value);
+
+      const wmType = document.getElementById('watermarkType').value;
+      form.append('watermarkType', wmType);
+      if (wmType === 'text') {
+        form.append('watermarkText', document.getElementById('watermarkText').value);
+        form.append('watermarkColor', document.getElementById('watermarkColor').value);
+        form.append('watermarkPosition', document.getElementById('watermarkTextPosition').value);
+        form.append('watermarkFit', document.getElementById('watermarkFit').value);
+      } else if (wmType === 'image') {
+        const wmFile = document.getElementById('watermarkImage').files[0];
+        if (wmFile) form.append('watermarkImage', wmFile);
+        form.append('watermarkPosition', document.getElementById('watermarkPosition').value);
+        form.append('watermarkScale', document.getElementById('watermarkScale').value);
+        form.append('watermarkOpacity', document.getElementById('watermarkOpacity').value);
+      }
 
       try {
         const res = await fetch('/api/image/convert', { method: 'POST', body: form });

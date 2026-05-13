@@ -22,7 +22,15 @@
       "mcp__Chrome_DevTools_MCP__upload_file",
       "mcp__Chrome_DevTools_MCP__navigate_page",
       "mcp__Chrome_DevTools_MCP__fill",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(D:\\\\newComputerFile\\\\dev\\\\code\\\\my-tools\\\\web_ui\\\\run.py *)",
+      "mcp__Chrome_DevTools_MCP__press_key",
+      "mcp__Chrome_DevTools_MCP__evaluate_script",
+      "mcp__Chrome_DevTools_MCP__wait_for",
+      "Bash(curl -s \"http://127.0.0.1:63054/api/preview/f5f83e3070004cc682a220babc9cfb81_jpg_wm_%E8%BF%99%E6%98%AF%E4%B8%80%E4%B8%AA%E8%B6%85%E7%BA%A7%E9%95%BF%E7%9A%84%E6%B0%B4%E5%8D%B0.jpg\" -o /tmp/watermark_test.jpg)",
+      "Read(//tmp/**)",
+      "mcp__Chrome_DevTools_MCP__select_page",
+      "mcp__Chrome_DevTools_MCP__close_page"
     ]
   }
 }

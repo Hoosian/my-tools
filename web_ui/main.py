@@ -39,7 +39,7 @@ async def root():
 async def image_formats():
     result = subprocess.run(
         ["node", str(NODE_BRIDGE), json.dumps({"action": "formats"})],
-        capture_output=True, text=True, cwd=str(BASE_DIR.parent / "js-image-cropper")
+        capture_output=True, text=True, encoding="utf-8", cwd=str(BASE_DIR.parent / "js-image-cropper")
     )
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=f"Node error: {result.stderr}")
@@ -56,6 +56,14 @@ async def image_convert(
     flipH: bool = Form(False),
     flipV: bool = Form(False),
     rotate: str = Form(""),
+    watermarkType: str = Form("none"),
+    watermarkText: str = Form(""),
+    watermarkColor: str = Form("rgba(255,255,255,0.5)"),
+    watermarkFit: str = Form("shrink"),
+    watermarkImage: UploadFile = File(None),
+    watermarkPosition: str = Form("bottom-right"),
+    watermarkScale: float = Form(0.2),
+    watermarkOpacity: float = Form(0.5),
 ):
     ext = Path(file.filename).suffix
     input_path = UPLOAD_DIR / f"{uuid.uuid4().hex}{ext}"
@@ -70,6 +78,20 @@ async def image_convert(
     if rotate:
         options["angle"] = float(rotate)
 
+    if watermarkType == "text" and watermarkText:
+        options["watermark"] = {"text": watermarkText, "color": watermarkColor, "position": watermarkPosition, "fit": watermarkFit}
+    elif watermarkType == "image" and watermarkImage:
+        wm_ext = Path(watermarkImage.filename).suffix
+        wm_path = UPLOAD_DIR / f"{uuid.uuid4().hex}{wm_ext}"
+        with open(wm_path, "wb") as f:
+            shutil.copyfileobj(watermarkImage.file, f)
+        options["watermark"] = {
+            "image": str(wm_path),
+            "position": watermarkPosition,
+            "scale": watermarkScale,
+            "opacity": watermarkOpacity,
+        }
+
     payload = {
         "action": "convert",
         "path": str(input_path),
@@ -79,7 +101,7 @@ async def image_convert(
 
     result = subprocess.run(
         ["node", str(NODE_BRIDGE), json.dumps(payload)],
-        capture_output=True, text=True, cwd=str(BASE_DIR.parent / "js-image-cropper")
+        capture_output=True, text=True, encoding="utf-8", cwd=str(BASE_DIR.parent / "js-image-cropper")
     )
 
     try:
