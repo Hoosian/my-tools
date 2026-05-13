@@ -133,7 +133,7 @@ function generateOutputFilename(inputPath, targetFormat, options = {}) {
 }
 
 async function convertFile(inputPath, targetFormat, options = {}) {
-  const { quality = 85, skipExisting = true, ratio = null, size = null, flipH = false, flipV = false, angle = null, watermark = null } = options;
+  let { quality = 85, skipExisting = true, ratio = null, size = null, flipH = false, flipV = false, angle = null, watermark = null } = options;
 
   if (!fs.existsSync(inputPath)) {
     return { success: false, error: 'File not found', path: inputPath };
@@ -154,6 +154,7 @@ async function convertFile(inputPath, targetFormat, options = {}) {
       if (!validation.valid) {
         return { success: false, error: validation.error, path: inputPath };
       }
+      ratio = validation.ratio;
     } else if (typeof ratio === 'object' && ratio.value) {
       // ratio 已经是解析后的对象
     } else {
@@ -167,6 +168,7 @@ async function convertFile(inputPath, targetFormat, options = {}) {
       if (!validation.valid) {
         return { success: false, error: validation.error, path: inputPath };
       }
+      size = validation.size;
     } else if (typeof size === 'object' && size.width && size.height) {
       // size 已经是解析后的对象
     } else {
@@ -180,6 +182,7 @@ async function convertFile(inputPath, targetFormat, options = {}) {
       if (!validation.valid) {
         return { success: false, error: validation.error, path: inputPath };
       }
+      angle = validation.angle;
     } else if (typeof angle === 'number') {
       // angle 已经是数字
       if (angle < -360 || angle > 360) {

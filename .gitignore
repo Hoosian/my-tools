@@ -20,6 +20,8 @@ package-lock.json
 *.xlsx
 !src/**/*.xlsx
 python-image-cropper/output/
+web_ui/uploads/
+web_ui/outputs/
 
 # ========== IDE ==========
 .idea/

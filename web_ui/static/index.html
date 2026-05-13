@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Tools</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f5f6fa;
+      color: #333;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 28px;
+      color: #2c3e50;
+    }
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      background: #fff;
+      padding: 6px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      border: none;
+      background: transparent;
+      color: #666;
+      font-size: 15px;
+    }
+    .tab.active {
+      background: #4a90d9;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(74,144,217,0.3);
+    }
+    .panel {
+      display: none;
+      background: #fff;
+      padding: 28px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .panel.active { display: block; }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      font-size: 14px;
+      color: #555;
+    }
+    input[type="text"],
+    input[type="number"],
+    input[type="file"],
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #4a90d9;
+    }
+    input[type="file"] { padding: 8px; }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .checkbox-group {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      margin-top: 6px;
+    }
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 400;
+      cursor: pointer;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    .btn-primary {
+      background: #4a90d9;
+      color: #fff;
+    }
+    .btn-primary:hover { background: #3a7bc8; }
+    .btn-primary:disabled {
+      background: #a0c4e8;
+      cursor: not-allowed;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+    }
+    .result.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #c8e6c9;
+    }
+    .result.error {
+      background: #ffebee;
+      color: #c62828;
+      border: 1px solid #ffcdd2;
+    }
+    .result a {
+      color: #1565c0;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .result a:hover { text-decoration: underline; }
+    .hint {
+      font-size: 12px;
+      color: #999;
+      margin-top: 4px;
+    }
+    .schema-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .schema-row input, .schema-row select {
+      margin-bottom: 0;
+    }
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 13px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn-add {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+    .btn-remove {
+      background: #ffebee;
+      color: #c62828;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>My Tools</h1>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('image')">🖼️ 图片转换</button>
+      <button class="tab" onclick="switchTab('excel')">📊 Excel 生成</button>
+    </div>
+
+    <!-- 图片转换 -->
+    <div id="panel-image" class="panel active">
+      <form id="imageForm" onsubmit="handleImageConvert(event)">
+        <div class="form-group">
+          <label>选择图片</label>
+          <input type="file" id="imgFile" accept="image/*" required>
+        </div>
+        <div class="row">
+          <div class="form-group">
+            <label>目标格式</label>
+            <select id="imgFormat" required>
+              <option value="jpg">JPG</option>
+              <option value="png">PNG</option>
+              <option value="webp">WebP</option>
+              <option value="avif">AVIF</option>
+              <option value="tiff">TIFF</option>
+              <option value="gif">GIF</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>质量 (1-100)</label>
+            <input type="number" id="imgQuality" value="85" min="1" max="100">
+          </div>
+        </div>
+        <div class="row">
+          <div class="form-group">
+            <label>裁剪比例 <span class="hint">可选，如 3:4, 16:9</span></label>
+            <input type="text" id="imgRatio" placeholder="留空则不裁剪">
+          </div>
+          <div class="form-group">
+            <label>缩放尺寸 <span class="hint">可选，如 800x600</span></label>
+            <input type="text" id="imgSize" placeholder="留空则不缩放">
+          </div>
+        </div>
+        <div class="row">
+          <div class="form-group">
+            <label>旋转角度 <span class="hint">可选，如 90, -45, 180</span></label>
+            <input type="text" id="imgRotate" placeholder="留空则不旋转">
+          </div>
+          <div class="form-group">
+            <label>翻转</label>
+            <div class="checkbox-group">
+              <label><input type="checkbox" id="imgFlipH"> 水平</label>
+              <label><input type="checkbox" id="imgFlipV"> 垂直</label>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="imgBtn">开始转换</button>
+      </form>
+      <div id="imgResult" class="result"></div>
+    </div>
+
+    <!-- Excel 生成 -->
+    <div id="panel-excel" class="panel">
+      <form id="excelForm" onsubmit="handleExcelGenerate(event)">
+        <div class="row">
+          <div class="form-group">
+            <label>文件名</label>
+            <input type="text" id="excelFilename" value="test.xlsx" required>
+          </div>
+          <div class="form-group">
+            <label>数据行数</label>
+            <input type="number" id="excelCount" value="10" min="1" max="10000" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>表头与数据类型</label>
+          <div id="schemaContainer"></div>
+          <button type="button" class="btn-small btn-add" onclick="addSchemaRow()">+ 添加列</button>
+        </div>
+        <button type="submit" class="btn btn-primary" id="excelBtn">生成 Excel</button>
+      </form>
+      <div id="excelResult" class="result"></div>
+    </div>
+  </div>
+
+  <script>
+    const DATA_TYPES = [
+      { value: 'name', label: '姓名' },
+      { value: 'age', label: '年龄' },
+      { value: 'email', label: '邮箱' },
+      { value: 'phone', label: '电话' },
+      { value: 'city', label: '城市' },
+      { value: 'address', label: '地址' },
+      { value: 'date', label: '日期' },
+      { value: 'company', label: '公司' },
+      { value: 'job', label: '职业' },
+    ];
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('panel-' + name).classList.add('active');
+    }
+
+    function showResult(elId, msg, isError) {
+      const el = document.getElementById(elId);
+      el.innerHTML = msg;
+      el.className = 'result ' + (isError ? 'error' : 'success');
+      el.style.display = 'block';
+    }
+
+    function hideResult(elId) {
+      const el = document.getElementById(elId);
+      el.style.display = 'none';
+    }
+
+    // Excel schema 动态列
+    function addSchemaRow(header = '', type = 'name') {
+      const container = document.getElementById('schemaContainer');
+      const row = document.createElement('div');
+      row.className = 'schema-row';
+      row.innerHTML = `
+        <input type="text" placeholder="列名" value="${header}" class="schema-header" required>
+        <select class="schema-type">${DATA_TYPES.map(t => `<option value="${t.value}" ${t.value === type ? 'selected' : ''}>${t.label}</option>`).join('')}</select>
+        <button type="button" class="btn-small btn-remove" onclick="this.parentElement.remove()">删除</button>
+      `;
+      container.appendChild(row);
+    }
+
+    // 初始化默认列
+    addSchemaRow('姓名', 'name');
+    addSchemaRow('年龄', 'age');
+    addSchemaRow('邮箱', 'email');
+    addSchemaRow('电话', 'phone');
+    addSchemaRow('城市', 'city');
+
+    async function handleImageConvert(e) {
+      e.preventDefault();
+      hideResult('imgResult');
+      const btn = document.getElementById('imgBtn');
+      btn.disabled = true;
+      btn.textContent = '转换中...';
+
+      const form = new FormData();
+      form.append('file', document.getElementById('imgFile').files[0]);
+      form.append('format', document.getElementById('imgFormat').value);
+      form.append('quality', document.getElementById('imgQuality').value);
+      form.append('ratio', document.getElementById('imgRatio').value);
+      form.append('size', document.getElementById('imgSize').value);
+      form.append('flipH', document.getElementById('imgFlipH').checked);
+      form.append('flipV', document.getElementById('imgFlipV').checked);
+      form.append('rotate', document.getElementById('imgRotate').value);
+
+      try {
+        const res = await fetch('/api/image/convert', { method: 'POST', body: form });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showResult('imgResult', `✅ 转换成功！<a href="${data.downloadUrl}" download>下载 ${data.filename}</a>`, false);
+        } else {
+          showResult('imgResult', '❌ 失败：' + (data.detail || data.error || 'Unknown error'), true);
+        }
+      } catch (err) {
+        showResult('imgResult', '❌ 请求失败：' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '开始转换';
+      }
+    }
+
+    async function handleExcelGenerate(e) {
+      e.preventDefault();
+      hideResult('excelResult');
+      const btn = document.getElementById('excelBtn');
+      btn.disabled = true;
+      btn.textContent = '生成中...';
+
+      const headers = [];
+      const schema = {};
+      document.querySelectorAll('.schema-row').forEach(row => {
+        const h = row.querySelector('.schema-header').value.trim();
+        const t = row.querySelector('.schema-type').value;
+        if (h) {
+          headers.push(h);
+          schema[h] = t;
+        }
+      });
+
+      const body = {
+        filename: document.getElementById('excelFilename').value,
+        count: parseInt(document.getElementById('excelCount').value),
+        headers,
+        schema,
+      };
+
+      try {
+        const res = await fetch('/api/excel/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showResult('excelResult', `✅ 生成成功！<a href="${data.downloadUrl}" download>下载 ${data.filename}</a>`, false);
+        } else {
+          showResult('excelResult', '❌ 失败：' + (data.detail || data.error || 'Unknown error'), true);
+        }
+      } catch (err) {
+        showResult('excelResult', '❌ 请求失败：' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '生成 Excel';
+      }
+    }
+  </script>
+</body>
+</html>

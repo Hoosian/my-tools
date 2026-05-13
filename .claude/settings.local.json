@@ -8,7 +8,20 @@
       "Read(//d/newComputerFile/dev/code/my-tools/js-image-cropper/**)",
       "Bash(node --check src/converter.js)",
       "Bash(node --check src/index.js)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(uv --version)",
+      "Bash(uv pip *)",
+      "Bash(uv add *)",
+      "Bash(uv run *)",
+      "Bash(PYTHONPATH=\"/d/newComputerFile/dev/code/my-tools\" /d/newComputerFile/dev/code/my-tools/python-excel-generator/.venv/Scripts/python.exe *)",
+      "mcp__Chrome_DevTools_MCP__new_page",
+      "mcp__Chrome_DevTools_MCP__take_screenshot",
+      "mcp__Chrome_DevTools_MCP__click",
+      "mcp__Chrome_DevTools_MCP__take_snapshot",
+      "Bash(/d/newComputerFile/dev/code/my-tools/python-excel-generator/.venv/Scripts/python.exe *)",
+      "mcp__Chrome_DevTools_MCP__upload_file",
+      "mcp__Chrome_DevTools_MCP__navigate_page",
+      "mcp__Chrome_DevTools_MCP__fill"
     ]
   }
 }
