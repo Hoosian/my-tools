@@ -95,6 +95,7 @@ async def image_convert(
         dest = OUTPUT_DIR / Path(output_path).name
         shutil.move(output_path, dest)
         data["downloadUrl"] = f"/api/download/{dest.name}"
+        data["previewUrl"] = f"/api/preview/{dest.name}"
         data["filename"] = dest.name
 
     input_path.unlink(missing_ok=True)
@@ -133,6 +134,14 @@ async def download(filename: str):
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(path=file_path, filename=filename)
+
+
+@app.get("/api/preview/{filename}")
+async def preview(filename: str):
+    file_path = OUTPUT_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(path=file_path)
 
 
 if __name__ == "__main__":

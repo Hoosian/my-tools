@@ -175,6 +175,36 @@
       background: #ffebee;
       color: #c62828;
     }
+    .preview-area {
+      display: none;
+      margin-top: 12px;
+    }
+    .preview-area img {
+      max-width: 100%;
+      max-height: 280px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .preview-label {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 6px;
+    }
+    .compare-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .compare-col {
+      text-align: center;
+    }
+    .compare-col img {
+      max-width: 100%;
+      max-height: 220px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
   </style>
 </head>
 <body>
@@ -191,6 +221,10 @@
         <div class="form-group">
           <label>选择图片</label>
           <input type="file" id="imgFile" accept="image/*" required>
+          <div id="originalPreview" class="preview-area">
+            <div class="preview-label">原始图片</div>
+            <img id="originalImg" src="" alt="原始预览">
+          </div>
         </div>
         <div class="row">
           <div class="form-group">
@@ -313,6 +347,27 @@
     addSchemaRow('电话', 'phone');
     addSchemaRow('城市', 'city');
 
+    let originalImageData = '';
+
+    document.getElementById('imgFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      const previewArea = document.getElementById('originalPreview');
+      const previewImg = document.getElementById('originalImg');
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          originalImageData = ev.target.result;
+          previewImg.src = originalImageData;
+          previewArea.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        previewArea.style.display = 'none';
+        previewImg.src = '';
+        originalImageData = '';
+      }
+    });
+
     async function handleImageConvert(e) {
       e.preventDefault();
       hideResult('imgResult');
@@ -334,7 +389,13 @@
         const res = await fetch('/api/image/convert', { method: 'POST', body: form });
         const data = await res.json();
         if (res.ok && data.success) {
-          showResult('imgResult', `✅ 转换成功！<a href="${data.downloadUrl}" download>下载 ${data.filename}</a>`, false);
+          let html = `✅ 转换成功！<a href="${data.downloadUrl}" download>下载 ${data.filename}</a>`;
+          if (originalImageData) {
+            html += `<div class="compare-row"><div class="compare-col"><div class="preview-label">原始图片</div><img src="${originalImageData}"></div><div class="compare-col"><div class="preview-label">转换后</div><img src="${data.previewUrl}"></div></div>`;
+          } else {
+            html += `<br><img src="${data.previewUrl}" style="max-width:100%;margin-top:12px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">`;
+          }
+          showResult('imgResult', html, false);
         } else {
           showResult('imgResult', '❌ 失败：' + (data.detail || data.error || 'Unknown error'), true);
         }
