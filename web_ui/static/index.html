@@ -205,6 +205,70 @@
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
+    .mode-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      background: #f0f4f8;
+      padding: 4px;
+      border-radius: 8px;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      background: transparent;
+      color: #666;
+      transition: all 0.2s;
+    }
+    .mode-btn.active {
+      background: #4a90d9;
+      color: #fff;
+    }
+    .file-list {
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 8px;
+      margin-top: 8px;
+      background: #fafafa;
+    }
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #555;
+    }
+    .file-item:nth-child(odd) {
+      background: #f0f4f8;
+    }
+    .file-item .remove {
+      color: #c62828;
+      cursor: pointer;
+      font-size: 12px;
+      border: none;
+      background: none;
+    }
+    .batch-summary {
+      margin-top: 12px;
+    }
+    .batch-summary .item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 13px;
+    }
+    .batch-summary .ok { color: #2e7d32; }
+    .batch-summary .err { color: #c62828; }
   </style>
 </head>
 <body>
@@ -217,10 +281,15 @@
 
     <!-- 图片转换 -->
     <div id="panel-image" class="panel active">
-      <form id="imageForm" onsubmit="handleImageConvert(event)">
+      <form id="imageForm" onsubmit="handleImageSubmit(event)">
+        <div class="mode-toggle">
+          <button type="button" class="mode-btn active" id="modeSingle" onclick="switchMode('single')">单张模式</button>
+          <button type="button" class="mode-btn" id="modeBatch" onclick="switchMode('batch')">批量模式</button>
+        </div>
         <div class="form-group">
-          <label>选择图片</label>
+          <label id="fileLabel">选择图片</label>
           <input type="file" id="imgFile" accept="image/*" required>
+          <div id="fileList" class="file-list" style="display:none"></div>
           <div id="originalPreview" class="preview-area">
             <div class="preview-label">原始图片</div>
             <img id="originalImg" src="" alt="原始预览">
@@ -340,6 +409,7 @@
           </div>
         </div>
         <button type="submit" class="btn btn-primary" id="imgBtn">开始转换</button>
+        <div class="hint" id="batchHint" style="display:none;margin-top:6px;">将使用相同参数处理所有图片</div>
       </form>
       <div id="imgResult" class="result"></div>
     </div>
@@ -422,25 +492,6 @@
 
     let originalImageData = '';
 
-    document.getElementById('imgFile').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      const previewArea = document.getElementById('originalPreview');
-      const previewImg = document.getElementById('originalImg');
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(ev) {
-          originalImageData = ev.target.result;
-          previewImg.src = originalImageData;
-          previewArea.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-      } else {
-        previewArea.style.display = 'none';
-        previewImg.src = '';
-        originalImageData = '';
-      }
-    });
-
     function toggleWatermarkFields() {
       const type = document.getElementById('watermarkType').value;
       document.getElementById('wmTextSection').style.display = type === 'text' ? 'block' : 'none';
@@ -501,6 +552,170 @@
       }
     }
 
+    // ========== 批量模式相关 ==========
+    let currentMode = 'single';
+    let batchFiles = [];
+
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('modeSingle').classList.toggle('active', mode === 'single');
+      document.getElementById('modeBatch').classList.toggle('active', mode === 'batch');
+
+      const fileInput = document.getElementById('imgFile');
+      const fileList = document.getElementById('fileList');
+      const previewArea = document.getElementById('originalPreview');
+      const batchHint = document.getElementById('batchHint');
+      const btn = document.getElementById('imgBtn');
+
+      if (mode === 'batch') {
+        fileInput.setAttribute('multiple', 'multiple');
+        fileInput.removeAttribute('required');
+        document.getElementById('fileLabel').textContent = '选择图片（可多选）';
+        fileList.style.display = 'block';
+        previewArea.style.display = 'none';
+        batchHint.style.display = 'block';
+        btn.textContent = '开始批量转换';
+        fileInput.removeEventListener('change', handleSingleFileChange);
+        fileInput.addEventListener('change', handleBatchFileChange);
+      } else {
+        fileInput.removeAttribute('multiple');
+        fileInput.setAttribute('required', 'required');
+        document.getElementById('fileLabel').textContent = '选择图片';
+        fileList.style.display = 'none';
+        batchHint.style.display = 'none';
+        btn.textContent = '开始转换';
+        batchFiles = [];
+        renderFileList();
+        fileInput.removeEventListener('change', handleBatchFileChange);
+        fileInput.addEventListener('change', handleSingleFileChange);
+      }
+    }
+
+    function handleSingleFileChange(e) {
+      const file = e.target.files[0];
+      const previewArea = document.getElementById('originalPreview');
+      const previewImg = document.getElementById('originalImg');
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+          originalImageData = ev.target.result;
+          previewImg.src = originalImageData;
+          previewArea.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        previewArea.style.display = 'none';
+        previewImg.src = '';
+        originalImageData = '';
+      }
+    }
+
+    function handleBatchFileChange(e) {
+      const newFiles = Array.from(e.target.files);
+      batchFiles = batchFiles.concat(newFiles);
+      renderFileList();
+      e.target.value = '';
+    }
+
+    function renderFileList() {
+      const container = document.getElementById('fileList');
+      if (batchFiles.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      container.innerHTML = batchFiles.map((f, i) => `
+        <div class="file-item">
+          <span>${f.name} (${(f.size / 1024).toFixed(1)} KB)</span>
+          <button type="button" class="remove" onclick="removeBatchFile(${i})">移除</button>
+        </div>
+      `).join('');
+    }
+
+    function removeBatchFile(index) {
+      batchFiles.splice(index, 1);
+      renderFileList();
+    }
+
+    async function handleImageSubmit(e) {
+      e.preventDefault();
+      if (currentMode === 'batch') {
+        await handleBatchConvert();
+      } else {
+        await handleImageConvert(e);
+      }
+    }
+
+    async function handleBatchConvert() {
+      hideResult('imgResult');
+      if (batchFiles.length === 0) {
+        showResult('imgResult', '❌ 请先选择至少一张图片', true);
+        return;
+      }
+
+      const btn = document.getElementById('imgBtn');
+      btn.disabled = true;
+      btn.textContent = `转换中 (0/${batchFiles.length})...`;
+
+      const form = new FormData();
+      batchFiles.forEach(f => form.append('files', f));
+      form.append('format', document.getElementById('imgFormat').value);
+      form.append('quality', document.getElementById('imgQuality').value);
+      form.append('ratio', document.getElementById('imgRatio').value);
+      form.append('size', document.getElementById('imgSize').value);
+      form.append('flipH', document.getElementById('imgFlipH').checked);
+      form.append('flipV', document.getElementById('imgFlipV').checked);
+      form.append('rotate', document.getElementById('imgRotate').value);
+
+      const wmType = document.getElementById('watermarkType').value;
+      form.append('watermarkType', wmType);
+      if (wmType === 'text') {
+        form.append('watermarkText', document.getElementById('watermarkText').value);
+        form.append('watermarkColor', document.getElementById('watermarkColor').value);
+        form.append('watermarkPosition', document.getElementById('watermarkTextPosition').value);
+        form.append('watermarkFit', document.getElementById('watermarkFit').value);
+      } else if (wmType === 'image') {
+        const wmFile = document.getElementById('watermarkImage').files[0];
+        if (wmFile) form.append('watermarkImage', wmFile);
+        form.append('watermarkPosition', document.getElementById('watermarkPosition').value);
+        form.append('watermarkScale', document.getElementById('watermarkScale').value);
+        form.append('watermarkOpacity', document.getElementById('watermarkOpacity').value);
+      }
+
+      try {
+        const res = await fetch('/api/image/batch', { method: 'POST', body: form });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          let html = `✅ 批量转换完成！共 ${data.total} 张，成功 ${data.succeeded} 张，失败 ${data.failed} 张。<br>`;
+          html += `<a href="${data.zipUrl}" download>📦 下载 ZIP 压缩包</a>`;
+          if (data.errors && data.errors.length > 0) {
+            html += `<div class="batch-summary"><div class="preview-label" style="margin-top:12px;">失败详情：</div>`;
+            data.errors.forEach(err => {
+              html += `<div class="item err">❌ ${err.filename}：${err.error}</div>`;
+            });
+            html += `</div>`;
+          }
+          if (data.results && data.results.length > 0) {
+            html += `<div class="batch-summary"><div class="preview-label" style="margin-top:12px;">成功文件：</div>`;
+            data.results.slice(0, 5).forEach(r => {
+              html += `<div class="item ok">✅ ${r.filename}</div>`;
+            });
+            if (data.results.length > 5) {
+              html += `<div class="item ok">...还有 ${data.results.length - 5} 个文件</div>`;
+            }
+            html += `</div>`;
+          }
+          showResult('imgResult', html, false);
+        } else {
+          showResult('imgResult', '❌ 失败：' + (data.detail || data.error || 'Unknown error'), true);
+        }
+      } catch (err) {
+        showResult('imgResult', '❌ 请求失败：' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '开始批量转换';
+      }
+    }
+
     async function handleExcelGenerate(e) {
       e.preventDefault();
       hideResult('excelResult');
@@ -545,6 +760,9 @@
         btn.textContent = '生成 Excel';
       }
     }
+
+    // 初始化模式
+    switchMode('single');
   </script>
 </body>
 </html>

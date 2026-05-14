@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 import uuid
+import zipfile
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -122,6 +123,160 @@ async def image_convert(
 
     input_path.unlink(missing_ok=True)
     return data
+
+
+def _build_options(
+    quality: int,
+    flipH: bool,
+    flipV: bool,
+    ratio: str,
+    size: str,
+    rotate: str,
+    watermarkType: str,
+    watermarkText: str,
+    watermarkColor: str,
+    watermarkFit: str,
+    watermarkImage: UploadFile,
+    watermarkPosition: str,
+    watermarkScale: float,
+    watermarkOpacity: float,
+    upload_dir: Path,
+):
+    options = {"quality": quality, "skipExisting": False, "flipH": flipH, "flipV": flipV}
+    if ratio:
+        options["ratio"] = ratio
+    if size:
+        options["size"] = size
+    if rotate:
+        options["angle"] = float(rotate)
+
+    if watermarkType == "text" and watermarkText:
+        options["watermark"] = {
+            "text": watermarkText,
+            "color": watermarkColor,
+            "position": watermarkPosition,
+            "fit": watermarkFit,
+        }
+    elif watermarkType == "image" and watermarkImage:
+        wm_ext = Path(watermarkImage.filename).suffix
+        wm_path = upload_dir / f"{uuid.uuid4().hex}{wm_ext}"
+        with open(wm_path, "wb") as f:
+            shutil.copyfileobj(watermarkImage.file, f)
+        options["watermark"] = {
+            "image": str(wm_path),
+            "position": watermarkPosition,
+            "scale": watermarkScale,
+            "opacity": watermarkOpacity,
+        }
+    return options
+
+
+def _run_node_convert(input_path: Path, target_format: str, options: dict):
+    payload = {
+        "action": "convert",
+        "path": str(input_path),
+        "format": target_format,
+        "options": options,
+    }
+    result = subprocess.run(
+        ["node", str(NODE_BRIDGE), json.dumps(payload)],
+        capture_output=True, text=True, encoding="utf-8", cwd=str(BASE_DIR.parent / "js-image-cropper")
+    )
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return {"success": False, "error": f"Invalid JSON from node: {result.stdout}, stderr: {result.stderr}", "path": str(input_path)}
+    return data
+
+
+@app.post("/api/image/batch")
+async def image_batch(
+    files: list[UploadFile] = File(...),
+    format: str = Form(...),
+    quality: int = Form(85),
+    ratio: str = Form(""),
+    size: str = Form(""),
+    flipH: bool = Form(False),
+    flipV: bool = Form(False),
+    rotate: str = Form(""),
+    watermarkType: str = Form("none"),
+    watermarkText: str = Form(""),
+    watermarkColor: str = Form("rgba(255,255,255,0.5)"),
+    watermarkFit: str = Form("shrink"),
+    watermarkImage: UploadFile = File(None),
+    watermarkPosition: str = Form("bottom-right"),
+    watermarkScale: float = Form(0.2),
+    watermarkOpacity: float = Form(0.5),
+):
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded")
+
+    batch_id = uuid.uuid4().hex
+    batch_upload_dir = UPLOAD_DIR / f"batch_{batch_id}"
+    batch_upload_dir.mkdir(exist_ok=True)
+
+    options = _build_options(
+        quality, flipH, flipV, ratio, size, rotate,
+        watermarkType, watermarkText, watermarkColor, watermarkFit,
+        watermarkImage, watermarkPosition, watermarkScale, watermarkOpacity,
+        batch_upload_dir,
+    )
+
+    results = []
+    succeeded = []
+    failed = []
+
+    for file in files:
+        ext = Path(file.filename).suffix
+        input_path = batch_upload_dir / f"{uuid.uuid4().hex}{ext}"
+        with open(input_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+
+        data = _run_node_convert(input_path, format, options)
+
+        if data.get("success"):
+            output_path = data.get("outputPath")
+            if output_path:
+                dest = OUTPUT_DIR / Path(output_path).name
+                shutil.move(output_path, dest)
+                data["downloadUrl"] = f"/api/download/{dest.name}"
+                data["previewUrl"] = f"/api/preview/{dest.name}"
+                data["filename"] = dest.name
+            succeeded.append(data)
+        else:
+            failed.append({"filename": file.filename, "error": data.get("error", "Unknown error")})
+
+        input_path.unlink(missing_ok=True)
+
+    # 清理水印临时文件
+    if watermarkType == "image" and watermarkImage:
+        wm_ext = Path(watermarkImage.filename).suffix
+        for p in batch_upload_dir.glob(f"*{wm_ext}"):
+            if p.name not in [r.get("filename", "") for r in succeeded]:
+                p.unlink(missing_ok=True)
+
+    # 打包 ZIP
+    zip_filename = f"batch_{batch_id}.zip"
+    zip_path = OUTPUT_DIR / zip_filename
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for item in succeeded:
+            file_path = OUTPUT_DIR / item["filename"]
+            if file_path.exists():
+                zf.write(file_path, item["filename"])
+
+    # 清理临时目录
+    shutil.rmtree(batch_upload_dir, ignore_errors=True)
+
+    return {
+        "success": True,
+        "total": len(files),
+        "succeeded": len(succeeded),
+        "failed": len(failed),
+        "zipUrl": f"/api/download/{zip_filename}",
+        "zipFilename": zip_filename,
+        "results": succeeded,
+        "errors": failed,
+    }
 
 
 @app.post("/api/excel/generate")

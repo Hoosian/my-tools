@@ -30,7 +30,11 @@
       "Bash(curl -s \"http://127.0.0.1:63054/api/preview/f5f83e3070004cc682a220babc9cfb81_jpg_wm_%E8%BF%99%E6%98%AF%E4%B8%80%E4%B8%AA%E8%B6%85%E7%BA%A7%E9%95%BF%E7%9A%84%E6%B0%B4%E5%8D%B0.jpg\" -o /tmp/watermark_test.jpg)",
       "Read(//tmp/**)",
       "mcp__Chrome_DevTools_MCP__select_page",
-      "mcp__Chrome_DevTools_MCP__close_page"
+      "mcp__Chrome_DevTools_MCP__close_page",
+      "Bash(ps -W)",
+      "Bash(cp D:/newComputerFile/dev/code/my-tools/web_ui/outputs/17024ac4c4ac4cca8fc48a49799277c9_jpg.jpg /tmp/test1.jpg)",
+      "Bash(cp D:/newComputerFile/dev/code/my-tools/web_ui/outputs/01a4f9f5eccb440d9c9fbe4672142f64_webp_flipH_r99.jpg /tmp/test2.jpg)",
+      "Bash(cp D:/newComputerFile/dev/code/my-tools/web_ui/outputs/3d490b7067f04a449c76277d8c01a7fc_png_3-4_flipH_r90.jpg /tmp/test3.jpg)"
     ]
   }
 }
