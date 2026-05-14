@@ -238,25 +238,6 @@
       margin-top: 8px;
       background: #fafafa;
     }
-    .file-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 8px;
-      border-radius: 6px;
-      font-size: 13px;
-      color: #555;
-    }
-    .file-item:nth-child(odd) {
-      background: #f0f4f8;
-    }
-    .file-item .remove {
-      color: #c62828;
-      cursor: pointer;
-      font-size: 12px;
-      border: none;
-      background: none;
-    }
     .batch-summary {
       margin-top: 12px;
     }
@@ -269,6 +250,73 @@
     }
     .batch-summary .ok { color: #2e7d32; }
     .batch-summary .err { color: #c62828; }
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #555;
+    }
+    .file-item:nth-child(odd) { background: #f0f4f8; }
+    .file-item .thumb {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 4px;
+      cursor: zoom-in;
+      flex-shrink: 0;
+    }
+    .file-item .info {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-item .remove {
+      color: #c62828;
+      cursor: pointer;
+      font-size: 12px;
+      border: none;
+      background: none;
+      flex-shrink: 0;
+    }
+    .result-thumb {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 4px;
+      cursor: zoom-in;
+      flex-shrink: 0;
+      border: 1px solid #ddd;
+    }
+    .preview-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      cursor: zoom-out;
+    }
+    .preview-modal.active { display: flex; }
+    .preview-modal img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 8px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    .preview-modal .close-btn {
+      position: absolute;
+      top: 16px;
+      right: 24px;
+      color: #fff;
+      font-size: 32px;
+      cursor: pointer;
+      line-height: 1;
+    }
   </style>
 </head>
 <body>
@@ -438,6 +486,11 @@
     </div>
   </div>
 
+  <div id="previewModal" class="preview-modal">
+    <span class="close-btn">&times;</span>
+    <img src="" alt="预览">
+  </div>
+
   <script>
     const DATA_TYPES = [
       { value: 'name', label: '姓名' },
@@ -584,6 +637,7 @@
         fileList.style.display = 'none';
         batchHint.style.display = 'none';
         btn.textContent = '开始转换';
+        batchFiles.forEach(f => { if (f._thumbUrl) URL.revokeObjectURL(f._thumbUrl); });
         batchFiles = [];
         renderFileList();
         fileInput.removeEventListener('change', handleBatchFileChange);
@@ -612,6 +666,7 @@
 
     function handleBatchFileChange(e) {
       const newFiles = Array.from(e.target.files);
+      newFiles.forEach(f => { f._thumbUrl = URL.createObjectURL(f); });
       batchFiles = batchFiles.concat(newFiles);
       renderFileList();
       e.target.value = '';
@@ -625,13 +680,16 @@
       }
       container.innerHTML = batchFiles.map((f, i) => `
         <div class="file-item">
-          <span>${f.name} (${(f.size / 1024).toFixed(1)} KB)</span>
+          <img class="thumb" src="${f._thumbUrl || ''}" alt="" onclick="openPreviewModal('${f._thumbUrl || ''}')">
+          <span class="info">${f.name} (${(f.size / 1024).toFixed(1)} KB)</span>
           <button type="button" class="remove" onclick="removeBatchFile(${i})">移除</button>
         </div>
       `).join('');
     }
 
     function removeBatchFile(index) {
+      const f = batchFiles[index];
+      if (f && f._thumbUrl) URL.revokeObjectURL(f._thumbUrl);
       batchFiles.splice(index, 1);
       renderFileList();
     }
@@ -695,13 +753,10 @@
             html += `</div>`;
           }
           if (data.results && data.results.length > 0) {
-            html += `<div class="batch-summary"><div class="preview-label" style="margin-top:12px;">成功文件：</div>`;
-            data.results.slice(0, 5).forEach(r => {
-              html += `<div class="item ok">✅ ${r.filename}</div>`;
+            html += `<div class="batch-summary"><div class="preview-label" style="margin-top:12px;">成功文件（点击缩略图可放大）：</div>`;
+            data.results.forEach(r => {
+              html += `<div class="item ok"><img class="result-thumb" src="${r.previewUrl}" alt="" onclick="openPreviewModal('${r.previewUrl}')"> ✅ ${r.filename}</div>`;
             });
-            if (data.results.length > 5) {
-              html += `<div class="item ok">...还有 ${data.results.length - 5} 个文件</div>`;
-            }
             html += `</div>`;
           }
           showResult('imgResult', html, false);
@@ -763,6 +818,23 @@
 
     // 初始化模式
     switchMode('single');
+
+    function openPreviewModal(src) {
+      const modal = document.getElementById('previewModal');
+      modal.querySelector('img').src = src;
+      modal.classList.add('active');
+    }
+
+    function closePreviewModal() {
+      document.getElementById('previewModal').classList.remove('active');
+    }
+
+    document.getElementById('previewModal').addEventListener('click', function(e) {
+      if (e.target === this || e.target.closest('.close-btn')) {
+        closePreviewModal();
+      }
+    });
   </script>
+
 </body>
 </html>

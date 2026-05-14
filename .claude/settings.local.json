@@ -34,7 +34,8 @@
       "Bash(ps -W)",
       "Bash(cp D:/newComputerFile/dev/code/my-tools/web_ui/outputs/17024ac4c4ac4cca8fc48a49799277c9_jpg.jpg /tmp/test1.jpg)",
       "Bash(cp D:/newComputerFile/dev/code/my-tools/web_ui/outputs/01a4f9f5eccb440d9c9fbe4672142f64_webp_flipH_r99.jpg /tmp/test2.jpg)",
-      "Bash(cp D:/newComputerFile/dev/code/my-tools/web_ui/outputs/3d490b7067f04a449c76277d8c01a7fc_png_3-4_flipH_r90.jpg /tmp/test3.jpg)"
+      "Bash(cp D:/newComputerFile/dev/code/my-tools/web_ui/outputs/3d490b7067f04a449c76277d8c01a7fc_png_3-4_flipH_r90.jpg /tmp/test3.jpg)",
+      "Bash(unzip -l D:/newComputerFile/dev/code/my-tools/web_ui/outputs/batch_3a79b138e7d44dd8b9e02a0f8196193d.zip)"
     ]
   }
 }

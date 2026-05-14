@@ -218,9 +218,32 @@ async function convertFile(inputPath, targetFormat, options = {}) {
       pipeline.resize(size.width, size.height, { fit: 'inside' });
     }
 
+    // 计算处理后的图片尺寸（用于水印计算）
+    let processedWidth = originalWidth;
+    let processedHeight = originalHeight;
+
+    if (ratio) {
+      const crop = calculateCropArea(originalWidth, originalHeight, ratio.value);
+      processedWidth = crop.width;
+      processedHeight = crop.height;
+    }
+
+    if (angle !== null && angle !== 0) {
+      const absAngle = Math.abs(angle) % 360;
+      if (absAngle === 90 || absAngle === 270) {
+        [processedWidth, processedHeight] = [processedHeight, processedWidth];
+      }
+    }
+
+    if (size) {
+      const scale = Math.min(size.width / processedWidth, size.height / processedHeight, 1);
+      processedWidth = Math.round(processedWidth * scale);
+      processedHeight = Math.round(processedHeight * scale);
+    }
+
     if (watermark) {
-      const imgWidth = originalWidth;
-      const imgHeight = originalHeight;
+      const imgWidth = processedWidth;
+      const imgHeight = processedHeight;
 
       if (watermark.text) {
         const fontSize = Math.round(Math.min(imgWidth, imgHeight) * 0.04);
@@ -288,8 +311,15 @@ ${tspanElements}
         const wmImage = sharp(watermark.image);
         const wmMeta = await wmImage.metadata();
         const wmScale = watermark.scale || 0.2;
-        const wmWidth = Math.round(imgWidth * wmScale);
-        const wmHeight = Math.round(wmMeta.height * (wmWidth / wmMeta.width));
+        let wmWidth = Math.round(imgWidth * wmScale);
+        let wmHeight = Math.round(wmMeta.height * (wmWidth / wmMeta.width));
+
+        // 安全限制：水印尺寸不能超过处理后图片尺寸
+        if (wmWidth > imgWidth || wmHeight > imgHeight) {
+          const scale = Math.min(imgWidth / wmWidth, imgHeight / wmHeight);
+          wmWidth = Math.round(wmWidth * scale);
+          wmHeight = Math.round(wmHeight * scale);
+        }
 
         const position = watermark.position || 'bottom-right';
         const gravity = getGravity(position);
