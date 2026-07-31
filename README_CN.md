@@ -36,11 +36,17 @@ npm start
 
 ### 3. python-doc-processor
 
-Word 文档处理工具（目前支持删除删除线内容）。
+Word 文档处理工具。
+
+- **strikethrough-remover**：删除 `.docx` 中的删除线内容。
+- **docx-to-markdown**：将 `.docx` 转换为 Markdown。
 
 ```bash
 cd python-doc-processor/strikethrough-remover
 python -m strike_remover.main input.docx output.docx
+
+cd ../docx-to-markdown
+python -m docx_to_markdown.main input.docx output.md
 ```
 
-详细说明见 [python-doc-processor/strikethrough-remover/README.md](python-doc-processor/strikethrough-remover/README.md)
+详细说明见 [python-doc-processor/strikethrough-remover/README.md](python-doc-processor/strikethrough-remover/README.md) 和 [python-doc-processor/docx-to-markdown/README.md](python-doc-processor/docx-to-markdown/README.md)。

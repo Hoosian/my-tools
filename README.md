@@ -22,6 +22,9 @@ npm install
 
 cd ../python-doc-processor/strikethrough-remover
 pip install -e .
+
+cd ../docx-to-markdown
+pip install -e .
 ```
 
 ### Start the server
@@ -76,11 +79,17 @@ See [js-image-cropper/README.md](js-image-cropper/README.md) for details.
 
 ### 3. python-doc-processor
 
-Word document utilities (starting with strikethrough removal).
+Word document utilities.
+
+- **strikethrough-remover**: Remove strikethrough text from `.docx` files.
+- **docx-to-markdown**: Convert `.docx` files to Markdown.
 
 ```bash
 cd python-doc-processor/strikethrough-remover
 python -m strike_remover.main input.docx output.docx
+
+cd ../docx-to-markdown
+python -m docx_to_markdown.main input.docx output.md
 ```
 
-See [python-doc-processor/strikethrough-remover/README.md](python-doc-processor/strikethrough-remover/README.md) for details.
+See [python-doc-processor/strikethrough-remover/README.md](python-doc-processor/strikethrough-remover/README.md) and [python-doc-processor/docx-to-markdown/README.md](python-doc-processor/docx-to-markdown/README.md) for details.

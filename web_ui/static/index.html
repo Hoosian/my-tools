@@ -489,6 +489,10 @@
     <!-- 文档处理 -->
     <div id="panel-doc" class="panel">
       <form id="docForm" onsubmit="handleDocSubmit(event)">
+        <div class="mode-toggle">
+          <button type="button" class="mode-btn active" id="docModeStrike" onclick="switchDocMode('strike')">清理删除线</button>
+          <button type="button" class="mode-btn" id="docModeMd" onclick="switchDocMode('md')">转 Markdown</button>
+        </div>
         <div class="form-group">
           <label>选择 Word 文档</label>
           <input type="file" id="docFile" accept=".docx,.doc" required>
@@ -829,18 +833,32 @@
       }
     }
 
+    let currentDocMode = 'strike';
+
+    function switchDocMode(mode) {
+      currentDocMode = mode;
+      document.getElementById('docModeStrike').classList.toggle('active', mode === 'strike');
+      document.getElementById('docModeMd').classList.toggle('active', mode === 'md');
+      const btn = document.getElementById('docBtn');
+      btn.textContent = mode === 'strike' ? '清理删除线' : '转 Markdown';
+    }
+
     async function handleDocSubmit(e) {
       e.preventDefault();
       hideResult('docResult');
       const btn = document.getElementById('docBtn');
       btn.disabled = true;
-      btn.textContent = '处理中...';
+      btn.textContent = currentDocMode === 'strike' ? '处理中...' : '转换中...';
 
       const form = new FormData();
       form.append('file', document.getElementById('docFile').files[0]);
 
+      const endpoint = currentDocMode === 'strike'
+        ? '/api/doc/remove-strikethrough'
+        : '/api/doc/convert-to-markdown';
+
       try {
-        const res = await fetch('/api/doc/remove-strikethrough', { method: 'POST', body: form });
+        const res = await fetch(endpoint, { method: 'POST', body: form });
         const data = await res.json();
         if (res.ok && data.success) {
           showResult('docResult', `✅ 处理成功！<a href="${data.downloadUrl}" download>下载 ${data.filename}</a>`, false);
@@ -851,7 +869,7 @@
         showResult('docResult', '❌ 请求失败：' + err.message, true);
       } finally {
         btn.disabled = false;
-        btn.textContent = '清理删除线';
+        btn.textContent = currentDocMode === 'strike' ? '清理删除线' : '转 Markdown';
       }
     }
 
