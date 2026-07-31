@@ -1,5 +1,7 @@
 """Core logic for removing strikethrough runs from Word documents."""
 
+import re
+
 from docx import Document
 from docx.table import Table
 
@@ -16,9 +18,45 @@ def _remove_strikethrough_from_paragraph(paragraph) -> None:
             paragraph._p.remove(run._r)
 
 
+def _normalize_paragraph_whitespace(paragraph) -> None:
+    """Collapse consecutive spaces and trim duplicated border spaces across runs."""
+    runs = list(paragraph.runs)
+    if not runs:
+        return
+
+    # Collapse multiple spaces inside each run
+    for run in runs:
+        if " " in run.text:
+            run.text = re.sub(r" +", " ", run.text)
+
+    # Remove duplicated border spaces between adjacent runs
+    runs = list(paragraph.runs)
+    for i in range(1, len(runs)):
+        prev_run = runs[i - 1]
+        cur_run = runs[i]
+        if prev_run.text.endswith(" ") and cur_run.text.startswith(" "):
+            cur_run.text = cur_run.text.lstrip(" ")
+
+    # Drop runs that became empty
+    for run in list(paragraph.runs):
+        if run.text == "":
+            paragraph._p.remove(run._r)
+
+
 def _remove_strikethrough_from_paragraphs(paragraphs) -> None:
     for paragraph in paragraphs:
         _remove_strikethrough_from_paragraph(paragraph)
+        _normalize_paragraph_whitespace(paragraph)
+
+
+def _remove_empty_table_rows(table: Table) -> None:
+    """Remove rows where every cell is empty after cleanup."""
+    rows_to_remove = []
+    for row in table.rows:
+        if all(not cell.text.strip() for cell in row.cells):
+            rows_to_remove.append(row)
+    for row in rows_to_remove:
+        table._tbl.remove(row._tr)
 
 
 def _remove_strikethrough_from_table(table: Table) -> None:
@@ -28,6 +66,7 @@ def _remove_strikethrough_from_table(table: Table) -> None:
             _remove_strikethrough_from_paragraphs(cell.paragraphs)
             for nested_table in cell.tables:
                 _remove_strikethrough_from_table(nested_table)
+    _remove_empty_table_rows(table)
 
 
 def _remove_strikethrough_from_header_footer(section) -> None:
@@ -59,7 +98,7 @@ def _remove_strikethrough_from_header_footer(section) -> None:
 
 
 def remove_strikethrough(input_path: str, output_path: str) -> None:
-    """Remove all direct strikethrough runs and save a new document."""
+    """Remove all direct strikethrough runs, normalize spaces and save a new document."""
     doc = Document(input_path)
 
     # Body paragraphs and tables

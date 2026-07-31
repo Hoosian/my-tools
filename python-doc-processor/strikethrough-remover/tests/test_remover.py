@@ -26,12 +26,19 @@ class TestStrikethroughRemover(unittest.TestCase):
         p2.add_run("Double ")
         p2.add_run("gone").font.double_strike = True
 
-        # Table with a strikethrough cell
+        # Table with a strikethrough cell (cell becomes empty but row is kept)
         table = doc.add_table(rows=1, cols=2)
         table.cell(0, 0).text = "normal cell"
         cell = table.cell(0, 1)
         cell.text = ""
         cell.paragraphs[0].add_run("strike cell").font.strike = True
+
+        # Table with a fully empty row after cleanup (should be removed)
+        table2 = doc.add_table(rows=2, cols=2)
+        table2.cell(0, 0).text = "keep row 1"
+        table2.cell(0, 1).text = "keep row 2"
+        table2.cell(1, 0).paragraphs[0].add_run("strike1").font.strike = True
+        table2.cell(1, 1).paragraphs[0].add_run("strike2").font.strike = True
 
         doc.save(path)
 
@@ -46,15 +53,20 @@ class TestStrikethroughRemover(unittest.TestCase):
 
             paragraphs = [p.text for p in doc.paragraphs]
 
-            self.assertIn("Keep  text", paragraphs[0])
+            self.assertEqual(paragraphs[0], "Keep text")
             self.assertNotIn("removed", paragraphs[0])
             self.assertEqual(paragraphs[1], "All normal text here")
-            self.assertIn("Double ", paragraphs[2])
+            self.assertEqual(paragraphs[2], "Double ")
             self.assertNotIn("gone", paragraphs[2])
 
             table = doc.tables[0]
             self.assertEqual(table.cell(0, 0).text, "normal cell")
             self.assertEqual(table.cell(0, 1).text, "")
+
+            table2 = doc.tables[1]
+            self.assertEqual(len(table2.rows), 1)
+            self.assertEqual(table2.cell(0, 0).text, "keep row 1")
+            self.assertEqual(table2.cell(0, 1).text, "keep row 2")
 
 
 if __name__ == "__main__":
