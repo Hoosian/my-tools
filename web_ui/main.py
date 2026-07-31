@@ -22,6 +22,9 @@ UPLOAD_DIR = BASE_DIR / "uploads"
 OUTPUT_DIR = BASE_DIR / "outputs"
 NODE_BRIDGE = BASE_DIR.parent / "js-image-cropper" / "api-bridge.js"
 
+sys.path.insert(0, str(BASE_DIR.parent / "python-doc-processor" / "strikethrough-remover"))
+from strike_remover.remover import remove_strikethrough
+
 UPLOAD_DIR.mkdir(exist_ok=True)
 OUTPUT_DIR.mkdir(exist_ok=True)
 
@@ -302,6 +305,40 @@ async def excel_generate(body: dict):
         "success": True,
         "filename": filename,
         "downloadUrl": f"/api/download/{filename}",
+    }
+
+
+@app.post("/api/doc/remove-strikethrough")
+async def doc_remove_strikethrough(file: UploadFile = File(...)):
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+
+    ext = Path(file.filename).suffix.lower()
+    if ext not in (".docx", ".doc"):
+        raise HTTPException(status_code=400, detail="Only .docx and .doc files are supported")
+
+    if ext == ".doc":
+        raise HTTPException(status_code=400, detail=".doc files are not supported yet, please save as .docx")
+
+    input_path = UPLOAD_DIR / f"{uuid.uuid4().hex}{ext}"
+    with open(input_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    try:
+        stem = Path(file.filename).stem
+        output_filename = f"{stem}_cleaned.docx"
+        output_path = OUTPUT_DIR / output_filename
+        remove_strikethrough(str(input_path), str(output_path))
+    except Exception as exc:
+        input_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail=f"Processing failed: {exc}")
+    finally:
+        input_path.unlink(missing_ok=True)
+
+    return {
+        "success": True,
+        "filename": output_filename,
+        "downloadUrl": f"/api/download/{output_filename}",
     }
 
 

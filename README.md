@@ -15,10 +15,13 @@ Unified web interface for all tools — no command line required.
 
 ```bash
 cd python-excel-generator
-uv pip install fastapi uvicorn python-multipart
+uv pip install fastapi uvicorn python-multipart python-docx
 
 cd ../js-image-cropper
 npm install
+
+cd ../python-doc-processor/strikethrough-remover
+pip install -e .
 ```
 
 ### Start the server
@@ -68,3 +71,16 @@ npm start
 ```
 
 See [js-image-cropper/README.md](js-image-cropper/README.md) for details.
+
+---
+
+### 3. python-doc-processor
+
+Word document utilities (starting with strikethrough removal).
+
+```bash
+cd python-doc-processor/strikethrough-remover
+python -m strike_remover.main input.docx output.docx
+```
+
+See [python-doc-processor/strikethrough-remover/README.md](python-doc-processor/strikethrough-remover/README.md) for details.

@@ -325,6 +325,7 @@
     <div class="tabs">
       <button class="tab active" onclick="switchTab('image')">🖼️ 图片转换</button>
       <button class="tab" onclick="switchTab('excel')">📊 Excel 生成</button>
+      <button class="tab" onclick="switchTab('doc')">📝 文档处理</button>
     </div>
 
     <!-- 图片转换 -->
@@ -483,6 +484,18 @@
         <button type="submit" class="btn btn-primary" id="excelBtn">生成 Excel</button>
       </form>
       <div id="excelResult" class="result"></div>
+    </div>
+
+    <!-- 文档处理 -->
+    <div id="panel-doc" class="panel">
+      <form id="docForm" onsubmit="handleDocSubmit(event)">
+        <div class="form-group">
+          <label>选择 Word 文档</label>
+          <input type="file" id="docFile" accept=".docx,.doc" required>
+        </div>
+        <button type="submit" class="btn btn-primary" id="docBtn">清理删除线</button>
+      </form>
+      <div id="docResult" class="result"></div>
     </div>
   </div>
 
@@ -813,6 +826,32 @@
       } finally {
         btn.disabled = false;
         btn.textContent = '生成 Excel';
+      }
+    }
+
+    async function handleDocSubmit(e) {
+      e.preventDefault();
+      hideResult('docResult');
+      const btn = document.getElementById('docBtn');
+      btn.disabled = true;
+      btn.textContent = '处理中...';
+
+      const form = new FormData();
+      form.append('file', document.getElementById('docFile').files[0]);
+
+      try {
+        const res = await fetch('/api/doc/remove-strikethrough', { method: 'POST', body: form });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showResult('docResult', `✅ 处理成功！<a href="${data.downloadUrl}" download>下载 ${data.filename}</a>`, false);
+        } else {
+          showResult('docResult', '❌ 失败：' + (data.detail || data.error || 'Unknown error'), true);
+        }
+      } catch (err) {
+        showResult('docResult', '❌ 请求失败：' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '清理删除线';
       }
     }
 

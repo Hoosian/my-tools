@@ -31,3 +31,16 @@ npm start
 ```
 
 详细说明见 [js-image-cropper/README.md](js-image-cropper/README.md)
+
+---
+
+### 3. python-doc-processor
+
+Word 文档处理工具（目前支持删除删除线内容）。
+
+```bash
+cd python-doc-processor/strikethrough-remover
+python -m strike_remover.main input.docx output.docx
+```
+
+详细说明见 [python-doc-processor/strikethrough-remover/README.md](python-doc-processor/strikethrough-remover/README.md)

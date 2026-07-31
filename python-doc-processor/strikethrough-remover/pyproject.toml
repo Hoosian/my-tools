@@ -1,0 +1,18 @@
+[project]
+name = "strikethrough-remover"
+version = "0.1.0"
+description = "Remove strikethrough text from Word documents"
+requires-python = ">=3.10"
+dependencies = [
+    "python-docx>=1.1.0",
+]
+
+[project.scripts]
+remove-strike = "strike_remover.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["strike_remover"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
