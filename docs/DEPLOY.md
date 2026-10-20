@@ -12,7 +12,7 @@
 ```
 
 - **Nginx**：宝塔管理的站点，负责账号密码校验（HTTP Basic Auth）、反向代理、HTTPS
-- **Python 端**：`web_ui/main.py`（FastAPI），依赖 `fastapi uvicorn python-multipart openpyxl Faker python-docx`
+- **Python 端**：`web_ui/main.py`（FastAPI），依赖见根目录 `requirements.txt`
 - **Node 端**：`js-image-cropper`（sharp 图片处理，Node ≥ 18，通过子进程调用）
 - uvicorn 只监听 `127.0.0.1:6666`，外网**不能**直接访问 6666，只能经过 Nginx，所以绕不过密码
 - 注意：本地的 `run.py` / `run.bat` 是 Windows 专用，服务器上不使用
@@ -100,8 +100,7 @@ python3 --version
 python3 -m venv .venv
 source .venv/bin/activate
 
-pip install fastapi uvicorn python-multipart openpyxl Faker python-docx \
-    -i https://mirrors.aliyun.com/pypi/simple/
+pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 ```
 
 ---
@@ -330,7 +329,7 @@ cut -d: -f1 /www/server/nginx/conf/mytools.htpasswd
 cd /www/wwwroot/my-tools
 git pull
 # 如果依赖有变化：
-source .venv/bin/activate && pip install <新依赖>
+source .venv/bin/activate && pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 cd js-image-cropper && npm install --registry=https://registry.npmmirror.com
 systemctl restart mytools
 ```

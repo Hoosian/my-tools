@@ -26,7 +26,8 @@ def main():
         print()
         print("Please install dependencies first:")
         print("  cd python-excel-generator")
-        print("  uv pip install fastapi uvicorn python-multipart")
+        print("  uv venv")
+        print("  uv pip install -r ../requirements.txt")
         input("\nPress Enter to exit...")
         sys.exit(1)
 

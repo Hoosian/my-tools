@@ -28,3 +28,9 @@ web_ui/outputs/
 .vscode/
 *.swp
 *.swo
+
+# ========== 本地文件 ==========
+.claude/settings.local.json
+test_image.jpg
+宝塔部署/
+宝塔部署.zip

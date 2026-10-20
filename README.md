@@ -15,16 +15,11 @@ Unified web interface for all tools — no command line required.
 
 ```bash
 cd python-excel-generator
-uv pip install fastapi uvicorn python-multipart python-docx
+uv venv                                  # 若 .venv 已存在可跳过
+uv pip install -r ../requirements.txt
 
 cd ../js-image-cropper
 npm install
-
-cd ../python-doc-processor/strikethrough-remover
-pip install -e .
-
-cd ../docx-to-markdown
-pip install -e .
 ```
 
 ### Start the server
