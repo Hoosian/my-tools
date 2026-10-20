@@ -528,6 +528,23 @@
       document.getElementById('panel-' + name).classList.add('active');
     }
 
+    // 拼进 innerHTML 的动态内容（文件名、错误信息等）都要先转义
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // FastAPI 的参数校验错误 detail 是数组，需要拼成可读文本
+    function errorText(data) {
+      const detail = data && (data.detail || data.error);
+      if (Array.isArray(detail)) return detail.map(d => d.msg || JSON.stringify(d)).join('; ');
+      return detail || 'Unknown error';
+    }
+
     function showResult(elId, msg, isError) {
       const el = document.getElementById(elId);
       el.innerHTML = msg;
@@ -546,7 +563,7 @@
       const row = document.createElement('div');
       row.className = 'schema-row';
       row.innerHTML = `
-        <input type="text" placeholder="列名" value="${header}" class="schema-header" required>
+        <input type="text" placeholder="列名" value="${escapeHtml(header)}" class="schema-header" required>
         <select class="schema-type">${DATA_TYPES.map(t => `<option value="${t.value}" ${t.value === type ? 'selected' : ''}>${t.label}</option>`).join('')}</select>
         <button type="button" class="btn-small btn-remove" onclick="this.parentElement.remove()">删除</button>
       `;
@@ -604,18 +621,18 @@
         const res = await fetch('/api/image/convert', { method: 'POST', body: form });
         const data = await res.json();
         if (res.ok && data.success) {
-          let html = `✅ 转换成功！<a href="${data.downloadUrl}" download>下载 ${data.filename}</a>`;
+          let html = `✅ 转换成功！<a href="${escapeHtml(data.downloadUrl)}" download>下载 ${escapeHtml(data.filename)}</a>`;
           if (originalImageData) {
-            html += `<div class="compare-row"><div class="compare-col"><div class="preview-label">原始图片</div><img src="${originalImageData}"></div><div class="compare-col"><div class="preview-label">转换后</div><img src="${data.previewUrl}"></div></div>`;
+            html += `<div class="compare-row"><div class="compare-col"><div class="preview-label">原始图片</div><img src="${originalImageData}"></div><div class="compare-col"><div class="preview-label">转换后</div><img src="${escapeHtml(data.previewUrl)}"></div></div>`;
           } else {
-            html += `<br><img src="${data.previewUrl}" style="max-width:100%;margin-top:12px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">`;
+            html += `<br><img src="${escapeHtml(data.previewUrl)}" style="max-width:100%;margin-top:12px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">`;
           }
           showResult('imgResult', html, false);
         } else {
-          showResult('imgResult', '❌ 失败：' + (data.detail || data.error || 'Unknown error'), true);
+          showResult('imgResult', '❌ 失败：' + escapeHtml(errorText(data)), true);
         }
       } catch (err) {
-        showResult('imgResult', '❌ 请求失败：' + err.message, true);
+        showResult('imgResult', '❌ 请求失败：' + escapeHtml(err.message), true);
       } finally {
         btn.disabled = false;
         btn.textContent = '开始转换';
@@ -697,8 +714,8 @@
       }
       container.innerHTML = batchFiles.map((f, i) => `
         <div class="file-item">
-          <img class="thumb" src="${f._thumbUrl || ''}" alt="" onclick="openPreviewModal('${f._thumbUrl || ''}')">
-          <span class="info">${f.name} (${(f.size / 1024).toFixed(1)} KB)</span>
+          <img class="thumb" src="${f._thumbUrl || ''}" alt="" onclick="openPreviewModal(this.src)">
+          <span class="info">${escapeHtml(f.name)} (${(f.size / 1024).toFixed(1)} KB)</span>
           <button type="button" class="remove" onclick="removeBatchFile(${i})">移除</button>
         </div>
       `).join('');
@@ -761,27 +778,27 @@
         const data = await res.json();
         if (res.ok && data.success) {
           let html = `✅ 批量转换完成！共 ${data.total} 张，成功 ${data.succeeded} 张，失败 ${data.failed} 张。<br>`;
-          html += `<a href="${data.zipUrl}" download>📦 下载 ZIP 压缩包</a>`;
+          html += `<a href="${escapeHtml(data.zipUrl)}" download>📦 下载 ZIP 压缩包</a>`;
           if (data.errors && data.errors.length > 0) {
             html += `<div class="batch-summary"><div class="preview-label" style="margin-top:12px;">失败详情：</div>`;
             data.errors.forEach(err => {
-              html += `<div class="item err">❌ ${err.filename}：${err.error}</div>`;
+              html += `<div class="item err">❌ ${escapeHtml(err.filename)}：${escapeHtml(err.error)}</div>`;
             });
             html += `</div>`;
           }
           if (data.results && data.results.length > 0) {
             html += `<div class="batch-summary"><div class="preview-label" style="margin-top:12px;">成功文件（点击缩略图可放大）：</div>`;
             data.results.forEach(r => {
-              html += `<div class="item ok"><img class="result-thumb" src="${r.previewUrl}" alt="" onclick="openPreviewModal('${r.previewUrl}')"> ✅ ${r.filename}</div>`;
+              html += `<div class="item ok"><img class="result-thumb" src="${escapeHtml(r.previewUrl)}" alt="" onclick="openPreviewModal(this.src)"> ✅ ${escapeHtml(r.filename)}</div>`;
             });
             html += `</div>`;
           }
           showResult('imgResult', html, false);
         } else {
-          showResult('imgResult', '❌ 失败：' + (data.detail || data.error || 'Unknown error'), true);
+          showResult('imgResult', '❌ 失败：' + escapeHtml(errorText(data)), true);
         }
       } catch (err) {
-        showResult('imgResult', '❌ 请求失败：' + err.message, true);
+        showResult('imgResult', '❌ 请求失败：' + escapeHtml(err.message), true);
       } finally {
         btn.disabled = false;
         btn.textContent = '开始批量转换';
@@ -821,12 +838,12 @@
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          showResult('excelResult', `✅ 生成成功！<a href="${data.downloadUrl}" download>下载 ${data.filename}</a>`, false);
+          showResult('excelResult', `✅ 生成成功！<a href="${escapeHtml(data.downloadUrl)}" download>下载 ${escapeHtml(data.filename)}</a>`, false);
         } else {
-          showResult('excelResult', '❌ 失败：' + (data.detail || data.error || 'Unknown error'), true);
+          showResult('excelResult', '❌ 失败：' + escapeHtml(errorText(data)), true);
         }
       } catch (err) {
-        showResult('excelResult', '❌ 请求失败：' + err.message, true);
+        showResult('excelResult', '❌ 请求失败：' + escapeHtml(err.message), true);
       } finally {
         btn.disabled = false;
         btn.textContent = '生成 Excel';
@@ -861,12 +878,12 @@
         const res = await fetch(endpoint, { method: 'POST', body: form });
         const data = await res.json();
         if (res.ok && data.success) {
-          showResult('docResult', `✅ 处理成功！<a href="${data.downloadUrl}" download>下载 ${data.filename}</a>`, false);
+          showResult('docResult', `✅ 处理成功！<a href="${escapeHtml(data.downloadUrl)}" download>下载 ${escapeHtml(data.filename)}</a>`, false);
         } else {
-          showResult('docResult', '❌ 失败：' + (data.detail || data.error || 'Unknown error'), true);
+          showResult('docResult', '❌ 失败：' + escapeHtml(errorText(data)), true);
         }
       } catch (err) {
-        showResult('docResult', '❌ 请求失败：' + err.message, true);
+        showResult('docResult', '❌ 请求失败：' + escapeHtml(err.message), true);
       } finally {
         btn.disabled = false;
         btn.textContent = currentDocMode === 'strike' ? '清理删除线' : '转 Markdown';

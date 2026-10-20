@@ -1,11 +1,13 @@
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
 import uuid
 import zipfile
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
@@ -81,7 +83,8 @@ def _save_upload(upload: UploadFile, dest: Path) -> None:
 
 def _unique_name(filename: str, default_ext: str) -> str:
     """Strip directory parts and append a random suffix so outputs never collide."""
-    name = Path(filename).name or "output"
+    # 替换 Windows 文件名不允许的字符，避免本地运行时保存失败
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", Path(filename).name) or "output"
     stem, ext = Path(name).stem or "output", Path(name).suffix or default_ext
     return f"{stem}_{uuid.uuid4().hex[:8]}{ext}"
 
@@ -158,8 +161,8 @@ def image_convert(
     if output_path:
         dest = OUTPUT_DIR / Path(output_path).name
         shutil.move(output_path, dest)
-        data["downloadUrl"] = f"/api/download/{dest.name}"
-        data["previewUrl"] = f"/api/preview/{dest.name}"
+        data["downloadUrl"] = f"/api/download/{quote(dest.name)}"
+        data["previewUrl"] = f"/api/preview/{quote(dest.name)}"
         data["filename"] = dest.name
 
     return data
@@ -279,8 +282,8 @@ def image_batch(
                 if output_path:
                     dest = OUTPUT_DIR / Path(output_path).name
                     shutil.move(output_path, dest)
-                    data["downloadUrl"] = f"/api/download/{dest.name}"
-                    data["previewUrl"] = f"/api/preview/{dest.name}"
+                    data["downloadUrl"] = f"/api/download/{quote(dest.name)}"
+                    data["previewUrl"] = f"/api/preview/{quote(dest.name)}"
                     data["filename"] = dest.name
                 succeeded.append(data)
             else:
@@ -305,7 +308,7 @@ def image_batch(
         "total": len(files),
         "succeeded": len(succeeded),
         "failed": len(failed),
-        "zipUrl": f"/api/download/{zip_filename}",
+        "zipUrl": f"/api/download/{quote(zip_filename)}",
         "zipFilename": zip_filename,
         "results": succeeded,
         "errors": failed,
@@ -337,7 +340,7 @@ def excel_generate(body: dict):
     return {
         "success": True,
         "filename": filename,
-        "downloadUrl": f"/api/download/{filename}",
+        "downloadUrl": f"/api/download/{quote(filename)}",
     }
 
 
@@ -369,7 +372,7 @@ def doc_remove_strikethrough(file: UploadFile = File(...)):
     return {
         "success": True,
         "filename": output_filename,
-        "downloadUrl": f"/api/download/{output_filename}",
+        "downloadUrl": f"/api/download/{quote(output_filename)}",
     }
 
 
@@ -401,7 +404,7 @@ def doc_convert_to_markdown(file: UploadFile = File(...)):
     return {
         "success": True,
         "filename": output_filename,
-        "downloadUrl": f"/api/download/{output_filename}",
+        "downloadUrl": f"/api/download/{quote(output_filename)}",
     }
 
 
