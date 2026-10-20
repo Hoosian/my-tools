@@ -1,3 +1,4 @@
+import base64
 import os
 import tempfile
 import unittest
@@ -5,6 +6,8 @@ import unittest
 from docx import Document
 
 from strike_remover.remover import remove_strikethrough
+
+_PNG_1X1 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
 
 
 class TestStrikethroughRemover(unittest.TestCase):
@@ -67,6 +70,30 @@ class TestStrikethroughRemover(unittest.TestCase):
             self.assertEqual(len(table2.rows), 1)
             self.assertEqual(table2.cell(0, 0).text, "keep row 1")
             self.assertEqual(table2.cell(0, 1).text, "keep row 2")
+
+    def test_keeps_images(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            img_path = os.path.join(tmp, "img.png")
+            with open(img_path, "wb") as f:
+                f.write(base64.b64decode(_PNG_1X1))
+            input_path = os.path.join(tmp, "input.docx")
+            output_path = os.path.join(tmp, "output.docx")
+
+            doc = Document()
+            p = doc.add_paragraph()
+            p.add_run("Text  with  spaces ")
+            p.add_run().add_picture(img_path)
+            p.add_run("gone").font.strike = True
+            table = doc.add_table(rows=1, cols=1)
+            table.cell(0, 0).paragraphs[0].add_run().add_picture(img_path)
+            doc.save(input_path)
+
+            remove_strikethrough(input_path, output_path)
+            out = Document(output_path)
+
+            self.assertEqual(len(out.inline_shapes), 2)
+            self.assertEqual(out.paragraphs[0].text, "Text with spaces ")
+            self.assertEqual(len(out.tables[0].rows), 1)
 
 
 if __name__ == "__main__":

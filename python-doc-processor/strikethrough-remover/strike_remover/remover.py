@@ -3,6 +3,7 @@
 import re
 
 from docx import Document
+from docx.oxml.ns import qn
 from docx.table import Table
 
 
@@ -18,28 +19,37 @@ def _remove_strikethrough_from_paragraph(paragraph) -> None:
             paragraph._p.remove(run._r)
 
 
+def _is_empty_run(run) -> bool:
+    """Return True if the run holds no text and no other content (images, tabs, breaks...)."""
+    for child in run._r:
+        if child.tag == qn("w:rPr"):
+            continue
+        if child.tag != qn("w:t") or child.text:
+            return False
+    return True
+
+
 def _normalize_paragraph_whitespace(paragraph) -> None:
-    """Collapse consecutive spaces and trim duplicated border spaces across runs."""
-    runs = list(paragraph.runs)
-    if not runs:
-        return
+    """Collapse consecutive spaces and trim duplicated border spaces across runs.
 
-    # Collapse multiple spaces inside each run
-    for run in runs:
-        if " " in run.text:
-            run.text = re.sub(r" +", " ", run.text)
+    Operates on <w:t> elements directly: assigning run.text would wipe
+    non-text content such as embedded images.
+    """
+    t_elems = [t for run in paragraph.runs for t in run._r.iter(qn("w:t"))]
 
-    # Remove duplicated border spaces between adjacent runs
-    runs = list(paragraph.runs)
-    for i in range(1, len(runs)):
-        prev_run = runs[i - 1]
-        cur_run = runs[i]
-        if prev_run.text.endswith(" ") and cur_run.text.startswith(" "):
-            cur_run.text = cur_run.text.lstrip(" ")
+    # Collapse multiple spaces inside each text element
+    for t in t_elems:
+        if t.text and "  " in t.text:
+            t.text = re.sub(r" +", " ", t.text)
+
+    # Remove duplicated border spaces between adjacent text elements
+    for prev, cur in zip(t_elems, t_elems[1:]):
+        if (prev.text or "").endswith(" ") and (cur.text or "").startswith(" "):
+            cur.text = cur.text.lstrip(" ")
 
     # Drop runs that became empty
     for run in list(paragraph.runs):
-        if run.text == "":
+        if _is_empty_run(run):
             paragraph._p.remove(run._r)
 
 
@@ -53,7 +63,8 @@ def _remove_empty_table_rows(table: Table) -> None:
     """Remove rows where every cell is empty after cleanup."""
     rows_to_remove = []
     for row in table.rows:
-        if all(not cell.text.strip() for cell in row.cells):
+        has_media = any(True for _ in row._tr.iter(qn("w:drawing"), qn("w:pict")))
+        if not has_media and all(not cell.text.strip() for cell in row.cells):
             rows_to_remove.append(row)
     for row in rows_to_remove:
         table._tbl.remove(row._tr)
