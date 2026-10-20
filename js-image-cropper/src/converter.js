@@ -323,11 +323,24 @@ ${tspanElements}
 
         const position = watermark.position || 'bottom-right';
         const gravity = getGravity(position);
+        const opacity = Math.min(1, Math.max(0, watermark.opacity ?? 0.5));
+
+        // 用 dest-in 把水印自身的 alpha 乘以 opacity，保留透明 PNG 的原有透明区域
+        const resized = await wmImage.resize(wmWidth, wmHeight).png().toBuffer();
+        const wmBuffer = await sharp(resized)
+          .ensureAlpha()
+          .composite([{
+            input: Buffer.from([255, 255, 255, Math.round(255 * opacity)]),
+            raw: { width: 1, height: 1, channels: 4 },
+            tile: true,
+            blend: 'dest-in'
+          }])
+          .png()
+          .toBuffer();
 
         pipeline.composite([{
-          input: await wmImage.resize(wmWidth, wmHeight).toBuffer(),
-          gravity: gravity,
-          blend: 'overlay'
+          input: wmBuffer,
+          gravity: gravity
         }]);
       }
     }
