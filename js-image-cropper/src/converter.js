@@ -200,14 +200,11 @@ async function convertFile(inputPath, targetFormat, options = {}) {
   }
 
   try {
-    const pipeline = sharp(inputPath);
+    let pipeline = sharp(inputPath);
     const metadata = await pipeline.metadata();
-    const originalWidth = metadata.width;
-    const originalHeight = metadata.height;
 
     if (ratio) {
-      const crop = calculateCropArea(originalWidth, originalHeight, ratio.value);
-      pipeline.extract(crop);
+      pipeline.extract(calculateCropArea(metadata.width, metadata.height, ratio.value));
     }
 
     if (flipH) pipeline.flop();
@@ -218,89 +215,83 @@ async function convertFile(inputPath, targetFormat, options = {}) {
       pipeline.resize(size.width, size.height, { fit: 'inside' });
     }
 
-    // 计算处理后的图片尺寸（用于水印计算）
-    let processedWidth = originalWidth;
-    let processedHeight = originalHeight;
-
-    if (ratio) {
-      const crop = calculateCropArea(originalWidth, originalHeight, ratio.value);
-      processedWidth = crop.width;
-      processedHeight = crop.height;
-    }
-
-    if (angle !== null && angle !== 0) {
-      const absAngle = Math.abs(angle) % 360;
-      if (absAngle === 90 || absAngle === 270) {
-        [processedWidth, processedHeight] = [processedHeight, processedWidth];
-      }
-    }
-
-    if (size) {
-      const scale = Math.min(size.width / processedWidth, size.height / processedHeight, 1);
-      processedWidth = Math.round(processedWidth * scale);
-      processedHeight = Math.round(processedHeight * scale);
-    }
-
     if (watermark) {
-      const imgWidth = processedWidth;
-      const imgHeight = processedHeight;
+      // 先执行裁剪/旋转/缩放拿到真实尺寸（任意角度旋转会扩大画布，无法可靠地手算），再叠加水印
+      const { data, info } = await pipeline.raw().toBuffer({ resolveWithObject: true });
+      pipeline = sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } });
+      const imgWidth = info.width;
+      const imgHeight = info.height;
 
       if (watermark.text) {
-        const fontSize = Math.round(Math.min(imgWidth, imgHeight) * 0.04);
+        const fontSize = Math.max(1, Math.round(Math.min(imgWidth, imgHeight) * 0.04));
         const padding = Math.round(fontSize * 0.5);
         const maxWidth = Math.round(imgWidth * 0.8);
-        const charWidth = fontSize * 0.6;
-        const maxCharsPerLine = Math.max(1, Math.floor((maxWidth - padding * 2) / charWidth));
+        const lineWidth = maxWidth - padding * 2;
         const maxLines = 3;
         const lineHeight = Math.round(fontSize * 1.3);
+        const ellipsis = '...';
+        // 估算字符宽度：中日韩等全角字符约 1em，其余约 0.6em
+        const charWidth = ch => (ch.codePointAt(0) >= 0x2e80 ? fontSize : fontSize * 0.6);
+        const textWidth = str => Array.from(str).reduce((sum, ch) => sum + charWidth(ch), 0);
+        // 截取能放进 limit 宽度的最长前缀（至少保留 1 个字符）
+        const fitPrefix = (chars, limit) => {
+          let width = 0;
+          let count = 0;
+          while (count < chars.length && width + charWidth(chars[count]) <= limit) {
+            width += charWidth(chars[count]);
+            count++;
+          }
+          return Math.max(1, count);
+        };
+        const truncate = str => {
+          const chars = Array.from(str);
+          if (textWidth(str) <= lineWidth) return str;
+          return chars.slice(0, fitPrefix(chars, lineWidth - textWidth(ellipsis))).join('') + ellipsis;
+        };
 
         let lines = [];
-        let rawText = watermark.text;
-
         if (watermark.fit === 'truncate') {
           // 单行截断模式
-          if (rawText.length > maxCharsPerLine) {
-            rawText = rawText.substring(0, Math.max(1, maxCharsPerLine - 2)) + '...';
-          }
-          lines = [rawText];
+          lines = [truncate(watermark.text)];
         } else {
-          // 自动换行模式（默认）
-          for (let i = 0; i < rawText.length; i += maxCharsPerLine) {
-            lines.push(rawText.substring(i, i + maxCharsPerLine));
+          // 自动换行模式（默认），超过 maxLines 行时最后一行加省略号
+          let rest = Array.from(watermark.text);
+          while (rest.length > 0 && lines.length < maxLines) {
+            const count = fitPrefix(rest, lineWidth);
+            lines.push(rest.slice(0, count).join(''));
+            rest = rest.slice(count);
           }
-          if (lines.length > maxLines) {
-            lines = lines.slice(0, maxLines - 1);
-            let lastLine = lines[lines.length - 1];
-            if (lastLine.length > maxCharsPerLine - 2) {
-              lastLine = lastLine.substring(0, maxCharsPerLine - 2);
-            }
-            lines[lines.length - 1] = lastLine + '...';
+          if (rest.length > 0) {
+            lines[lines.length - 1] = truncate(lines[lines.length - 1] + rest.join(''));
           }
         }
 
-        const wmWidth = maxWidth;
-        const wmHeight = Math.round(lineHeight * lines.length + padding);
+        // 极小图片上水印区域不能超出图片本身，否则 sharp 合成会报错
+        const wmWidth = Math.max(1, Math.min(maxWidth, imgWidth));
+        const wmHeight = Math.max(1, Math.min(Math.round(lineHeight * lines.length + padding), imgHeight));
         const position = watermark.position || 'bottom-right';
-        const { left: wmLeft, top: wmTop } = calculateTextPosition(
-          imgWidth, imgHeight, wmWidth, wmHeight, padding, position
-        );
+        const pos = calculateTextPosition(imgWidth, imgHeight, wmWidth, wmHeight, padding, position);
+        const wmLeft = Math.min(Math.max(0, pos.left), imgWidth - wmWidth);
+        const wmTop = Math.min(Math.max(0, pos.top), imgHeight - wmHeight);
 
-        const tspanElements = lines.map((line, idx) => {
-          const dy = idx === 0 ? lineHeight : lineHeight;
-          return `            <tspan x="${padding}" dy="${dy}">${escapeXml(line)}</tspan>`;
+        // 文字在水印区域内按位置对齐：右侧位置右对齐，居中位置居中，否则左对齐
+        const anchor = position.endsWith('right') ? 'end' : ['top', 'center', 'bottom'].includes(position) ? 'middle' : 'start';
+        const textX = anchor === 'end' ? wmWidth - padding : anchor === 'middle' ? Math.round(wmWidth / 2) : padding;
+        const tspanElements = lines.map(line => {
+          return `            <tspan x="${textX}" dy="${lineHeight}">${escapeXml(line)}</tspan>`;
         }).join('\n');
 
         const textSvg = `
           <svg width="${wmWidth}" height="${wmHeight}">
             <style>
               .watermark {
-                fill: ${watermark.color || 'rgba(255,255,255,0.7)'};
+                fill: ${safeColor(watermark.color)};
                 font-size: ${fontSize}px;
                 font-family: Arial, sans-serif;
                 font-weight: bold;
               }
             </style>
-            <text x="${padding}" y="0">
+            <text class="watermark" x="${textX}" y="0" text-anchor="${anchor}">
 ${tspanElements}
             </text>
           </svg>
@@ -406,6 +397,11 @@ function getSupportedFormats() {
     input: [...SUPPORTED_INPUT_FORMATS],
     output: [...SUPPORTED_OUTPUT_FORMATS]
   };
+}
+
+// 颜色会直接拼进 SVG 的 <style>，只允许颜色值会用到的字符，防止注入任意 SVG 内容
+function safeColor(color) {
+  return typeof color === 'string' && /^[#a-zA-Z0-9(),.%s]+$/.test(color) ? color : 'rgba(255,255,255,0.7)';
 }
 
 function escapeXml(str) {
