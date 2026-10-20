@@ -63,6 +63,27 @@ class TestDocxToMarkdown(unittest.TestCase):
             self.assertIn("| Alice | 30 |", result)
             self.assertIn("Final paragraph.", result)
 
+    def test_escapes_and_merges_runs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            input_path = os.path.join(tmp, "input.docx")
+            doc = Document()
+            doc.add_paragraph("price_total = a*b [note]")
+            p = doc.add_paragraph()
+            p.add_run("Bold ").bold = True
+            p.add_run("split").bold = True
+            p.add_run("plain ")
+            p.add_run(" italic ").italic = True
+            p.add_run("end")
+            table = doc.add_table(rows=1, cols=1)
+            table.cell(0, 0).text = "a_b|c"
+            doc.save(input_path)
+
+            result = docx_to_markdown(input_path)
+
+            self.assertIn("price\\_total = a\\*b \\[note\\]", result)
+            self.assertIn("**Bold split**plain  *italic* end", result)
+            self.assertIn("| a\\_b\\|c |", result)
+
 
 if __name__ == "__main__":
     unittest.main()
